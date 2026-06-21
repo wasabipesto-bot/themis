@@ -99,12 +99,11 @@ pub fn score_market(
             if daily_probs.is_empty() {
                 if prob_count_unfiltered == 0 {
                     return Err(anyhow!("No probabilities found for market {}", market.id));
-                } else {
-                    return Err(anyhow!(
-                        "All probabilities for market {} are outside of the override bounds",
-                        market.id
-                    ));
                 }
+                return Err(anyhow!(
+                    "All probabilities for market {} are outside of the override bounds",
+                    market.id
+                ));
             }
 
             // Sort probabilities by date
@@ -155,14 +154,12 @@ pub fn score_market(
     for day in days {
         let mut daily_market_absolute_scores = HashMap::with_capacity(markets.len());
         for market in markets {
-            // Get the market's probability point for the current day
-            let market_prob_point = if let Some(market_prob_point) = probs
+            // Get the market's probability point for the current day.
+            // If no probability point is found, skip this market.
+            let Some(market_prob_point) = probs
                 .iter()
                 .find(|p| p.date == day && p.market_id == market.id)
-            {
-                market_prob_point
-            } else {
-                // If no probability point is found, skip this market
+            else {
                 continue;
             };
 
@@ -186,7 +183,7 @@ pub fn score_market(
         // Get baseline score for the current day
         let scores = daily_market_absolute_scores
             .values()
-            .cloned()
+            .copied()
             .collect::<Vec<f32>>();
         let baseline = helpers::median(&scores);
 
@@ -214,8 +211,7 @@ pub fn score_market(
                 let score = scores.iter().sum::<f64>() as f32 / scores.len() as f32;
                 if &serde_json::to_string(&score).unwrap() == "null" {
                     error!(
-                        "{market_id} {score_type} score ({score}) serializes to null: {:?}",
-                        scores
+                        "{market_id} {score_type} score ({score}) serializes to null: {scores:?}"
                     );
                     return None;
                 }

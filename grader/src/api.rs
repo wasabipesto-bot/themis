@@ -139,10 +139,7 @@ pub fn get_all_markets(client: &Client, params: &PostgrestParams) -> Result<Vec<
     let mut markets = Vec::new();
 
     loop {
-        let endpoint = format!(
-            "/market_details?order=id.asc&limit={}&offset={}",
-            limit, offset
-        );
+        let endpoint = format!("/market_details?order=id.asc&limit={limit}&offset={offset}");
         let body: Vec<Market> = make_get_request(client, params, &endpoint)?;
         if body.is_empty() {
             break;
@@ -168,8 +165,7 @@ pub fn get_all_criterion_probs(
 
     loop {
         let endpoint = format!(
-            "/criterion_probabilities?{}&order=market_id&limit={}&offset={}",
-            criterion_type_query, limit, offset
+            "/criterion_probabilities?{criterion_type_query}&order=market_id&limit={limit}&offset={offset}"
         );
         let body: Vec<CriterionProbabilityPoint> = make_get_request(client, params, &endpoint)?;
         if body.is_empty() {
@@ -209,10 +205,7 @@ pub fn get_market_probs(
     let mut probs = Vec::new();
 
     for market_id in market_ids {
-        let endpoint = format!(
-            "/daily_probabilities?order=date.asc&market_id=eq.{}",
-            market_id
-        );
+        let endpoint = format!("/daily_probabilities?order=date.asc&market_id=eq.{market_id}");
         let response: Vec<DailyProbabilityPoint> = make_get_request(client, params, &endpoint)?;
         probs.extend(response);
     }

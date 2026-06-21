@@ -25,8 +25,8 @@ pub enum ScoreType {
 impl Display for ScoreType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ScoreType::Absolute(abs_type) => write!(f, "{}", abs_type),
-            ScoreType::Relative(rel_type) => write!(f, "{}", rel_type),
+            ScoreType::Absolute(abs_type) => write!(f, "{abs_type}"),
+            ScoreType::Relative(rel_type) => write!(f, "{rel_type}"),
         }
     }
 }
@@ -95,7 +95,7 @@ impl Display for AbsoluteScoreType {
             AbsoluteScoreType::SphericalBeforeClose7d => "spherical-before-close-days-7",
             AbsoluteScoreType::SphericalBeforeClose30d => "spherical-before-close-days-30",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 impl Serialize for AbsoluteScoreType {
@@ -235,7 +235,7 @@ impl Display for RelativeScoreType {
             RelativeScoreType::LogarithmicRelative => "logarithmic-relative",
             RelativeScoreType::SphericalRelative => "spherical-relative",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 impl Serialize for RelativeScoreType {
@@ -334,7 +334,7 @@ pub fn calculate_absolute_scores(
             for score_type in &score_types {
                 match score_type.score_market(market, market_criterion_probs) {
                     Ok(Some(market_score)) => scores.push(market_score),
-                    Ok(None) => continue,
+                    Ok(None) => {}
                     Err(e) => error!(
                         "Error calculating absolute scores for market {}: {}",
                         market.id, e
@@ -398,7 +398,16 @@ fn average_platform_category_scores(
     score_type: &ScoreType,
     market_scores: &[MarketScore],
 ) -> PlatformCategoryScore {
-    if !market_scores.is_empty() {
+    if market_scores.is_empty() {
+        PlatformCategoryScore {
+            platform_slug: platform_slug.to_string(),
+            category_slug: category_slug.to_string(),
+            score_type: score_type.clone(),
+            num_markets: 0,
+            score: None,
+            grade: None,
+        }
+    } else {
         // Average the scores
         let average_score =
             market_scores.iter().map(|s| s.score).sum::<f32>() / market_scores.len() as f32;
@@ -409,15 +418,6 @@ fn average_platform_category_scores(
             num_markets: market_scores.len(),
             score: Some(average_score),
             grade: Some(score_type.get_grade(average_score)),
-        }
-    } else {
-        PlatformCategoryScore {
-            platform_slug: platform_slug.to_string(),
-            category_slug: category_slug.to_string(),
-            score_type: score_type.clone(),
-            num_markets: 0,
-            score: None,
-            grade: None,
         }
     }
 }
@@ -428,7 +428,16 @@ fn average_other_scores(
     score_type: &ScoreType,
     market_scores: &[MarketScore],
 ) -> OtherScore {
-    if !market_scores.is_empty() {
+    if market_scores.is_empty() {
+        OtherScore {
+            item_type: item_type.to_string(),
+            item_id: item_id.to_string(),
+            score_type: score_type.clone(),
+            num_markets: 0,
+            score: None,
+            grade: None,
+        }
+    } else {
         // Average the scores
         let average_score =
             market_scores.iter().map(|s| s.score).sum::<f32>() / market_scores.len() as f32;
@@ -439,15 +448,6 @@ fn average_other_scores(
             num_markets: market_scores.len(),
             score: Some(average_score),
             grade: Some(score_type.get_grade(average_score)),
-        }
-    } else {
-        OtherScore {
-            item_type: item_type.to_string(),
-            item_id: item_id.to_string(),
-            score_type: score_type.clone(),
-            num_markets: 0,
-            score: None,
-            grade: None,
         }
     }
 }

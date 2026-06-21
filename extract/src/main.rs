@@ -62,7 +62,7 @@ fn main() -> Result<()> {
         "error" | "warn" | "info" | "debug" | "trace" => env::set_var("RUST_LOG", log_level),
         _ => {
             println!("Invalid log level, resetting to INFO.");
-            env::set_var("RUST_LOG", "info")
+            env::set_var("RUST_LOG", "info");
         }
     }
     env_logger::init();
@@ -70,17 +70,18 @@ fn main() -> Result<()> {
 
     // Get environment variables
     dotenv().ok();
-    let postgrest_params = match args.offline {
-        false => PostgrestParams {
+    let postgrest_params = if args.offline {
+        PostgrestParams {
+            postgrest_url: env::var("PGRST_URL").unwrap_or_default(),
+            postgrest_api_key: env::var("PGRST_APIKEY").unwrap_or_default(),
+        }
+    } else {
+        PostgrestParams {
             postgrest_url: env::var("PGRST_URL")
                 .expect("Required environment variable PGRST_URL not set."),
             postgrest_api_key: env::var("PGRST_APIKEY")
                 .expect("Required environment variable PGRST_APIKEY not set."),
-        },
-        true => PostgrestParams {
-            postgrest_url: env::var("PGRST_URL").unwrap_or_default(),
-            postgrest_api_key: env::var("PGRST_APIKEY").unwrap_or_default(),
-        },
+        }
     };
 
     // If the user requested a specific platform, format it into a list

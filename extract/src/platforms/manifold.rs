@@ -369,14 +369,16 @@ pub fn standardize(input: &ManifoldData) -> MarketResult<Vec<MarketAndProbs>> {
                                 market_id.to_owned(),
                                 "Manifold::MultipleChoice::ResolvedToMultiple".to_string(),
                             ));
-                        } else {
-                            answers
-                                .iter()
-                                .find(|answer| &answer.id == resolution)
-                                .ok_or(MarketError::DataInvalid(market_id.to_owned(),
-                                "Market {market_id}: No answer found matching the resolution ID".to_string()))?
-                                .to_owned()
                         }
+                        answers
+                            .iter()
+                            .find(|answer| &answer.id == resolution)
+                            .ok_or(MarketError::DataInvalid(
+                                market_id.to_owned(),
+                                "Market {market_id}: No answer found matching the resolution ID"
+                                    .to_string(),
+                            ))?
+                            .to_owned()
                     }
                     None => {
                         return Err(MarketError::DataInvalid(
@@ -653,10 +655,13 @@ fn get_resolution_value_binary(
             "CANCEL" => Ok(None),
             _ => Err(anyhow!("Resolution value is not one of YES/NO/MKT/CANCEL",)),
         },
-        None => match fail_on_missing {
-            true => Err(anyhow!("Resolution value is missing.")),
-            false => Ok(None),
-        },
+        None => {
+            if fail_on_missing {
+                Err(anyhow!("Resolution value is missing."))
+            } else {
+                Ok(None)
+            }
+        }
     }
 }
 
@@ -723,7 +728,7 @@ fn get_category(tags: &[String]) -> Option<String> {
         ("world-default", "politics"),
     ];
 
-    let category_map: HashMap<&str, &str> = CATEGORIES.iter().cloned().collect();
+    let category_map: HashMap<&str, &str> = CATEGORIES.iter().copied().collect();
 
     tags.iter()
         .find_map(|tag| category_map.get(tag.as_str()).map(|&cat| cat.to_string()))

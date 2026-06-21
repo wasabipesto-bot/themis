@@ -176,7 +176,7 @@ pub async fn download_index(index_file_path: &Path) -> Result<()> {
 
         let batch = response
             .as_array()
-            .map(|response_array| response_array.to_owned())
+            .map(std::borrow::ToOwned::to_owned)
             .ok_or_else(|| anyhow!("Could not format API reponse as array {}", response))?;
 
         // build items from batch and stream them straight to the temp file

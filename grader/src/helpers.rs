@@ -8,7 +8,7 @@ pub fn median(values: &[f32]) -> f32 {
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let mid = sorted.len() / 2;
     if sorted.len().is_multiple_of(2) {
-        (sorted[mid - 1] + sorted[mid]) / 2.0
+        f32::midpoint(sorted[mid - 1], sorted[mid])
     } else {
         sorted[mid]
     }
@@ -28,8 +28,7 @@ pub fn get_criterion_probability(
         .collect::<Vec<_>>();
     assert!(
         probs.len() < 2,
-        "Expected zero or one probabilities for criterion type '{}'",
-        criterion_type
+        "Expected zero or one probabilities for criterion type '{criterion_type}'"
     );
     probs.first().cloned()
 }
@@ -57,6 +56,9 @@ mod tests {
     }
 
     #[test]
+    // The panic comes from indexing an empty slice; its message is not stable enough
+    // to assert on, so we don't require an `expected` string here.
+    #[allow(clippy::should_panic_without_expect)]
     #[should_panic]
     fn test_median_empty_slice() {
         let values: &[f32] = &[];

@@ -66,7 +66,7 @@ impl Platform {
 
     /// Find the first line in the platform data file matching the search term and deserialize it.
     pub fn load_line_match(&self, base_dir: &Path, search: &str) -> Result<PlatformData> {
-        let file_name = format!("{}-data.jsonl", self).to_lowercase();
+        let file_name = format!("{self}-data.jsonl").to_lowercase();
         let data_file_path = base_dir.join(file_name);
 
         let file = File::open(&data_file_path)
@@ -84,7 +84,6 @@ impl Platform {
                 }
                 Err(err) => {
                     log::error!("Failed to read line {}: {}", line_number + 1, err);
-                    continue;
                 }
             }
         }
@@ -94,7 +93,7 @@ impl Platform {
 
     /// Find the appropriate data file based on platform name, then load and deserialize all lines.
     pub fn load_data(&self, base_dir: &Path, fail_fast: &bool) -> Result<Vec<PlatformData>> {
-        let file_name = format!("{}-data.jsonl", self).to_lowercase();
+        let file_name = format!("{self}-data.jsonl").to_lowercase();
         let data_file_path = base_dir.join(file_name);
 
         let file = File::open(&data_file_path)
@@ -129,50 +128,46 @@ impl Platform {
                                 .unwrap_or(column_substr.len());
                             let column_str = &column_substr[..column_end];
 
-                            if !column_str.is_empty() {
-                                if let Ok(column) = column_str.parse::<usize>() {
-                                    if column > 0 && column <= line_content.len() {
-                                        let char_pos = column - 1; // Convert to 0-based index
+                            if column_str.is_empty() {
+                                err_msg.push_str("- Empty column number found in error message.");
+                            } else if let Ok(column) = column_str.parse::<usize>() {
+                                if column > 0 && column <= line_content.len() {
+                                    let char_pos = column - 1; // Convert to 0-based index
 
-                                        // Handle UTF-8 properly by working with char boundaries
-                                        let chars: Vec<char> = line_content.chars().collect();
-                                        if char_pos < chars.len() {
-                                            let start_char_pos = char_pos.saturating_sub(25);
-                                            let end_char_pos =
-                                                std::cmp::min(char_pos + 25, chars.len());
+                                    // Handle UTF-8 properly by working with char boundaries
+                                    let chars: Vec<char> = line_content.chars().collect();
+                                    if char_pos < chars.len() {
+                                        let start_char_pos = char_pos.saturating_sub(25);
+                                        let end_char_pos =
+                                            std::cmp::min(char_pos + 25, chars.len());
 
-                                            let before: String =
-                                                chars[start_char_pos..char_pos].iter().collect();
-                                            let at_pos = chars[char_pos];
-                                            let after: String =
-                                                chars[char_pos + 1..end_char_pos].iter().collect();
+                                        let before: String =
+                                            chars[start_char_pos..char_pos].iter().collect();
+                                        let at_pos = chars[char_pos];
+                                        let after: String =
+                                            chars[char_pos + 1..end_char_pos].iter().collect();
 
-                                            err_msg.push_str(&format!(
-                                                " - Context around column {}: `{}[{}]{}`",
-                                                column, before, at_pos, after
-                                            ));
-                                        } else {
-                                            err_msg.push_str(&format!(
-                                                " - Additionally, column {} exceeds character count (chars: {}).",
-                                                column,
-                                                chars.len()
-                                            ));
-                                        }
+                                        err_msg.push_str(&format!(
+                                            " - Context around column {column}: `{before}[{at_pos}]{after}`"
+                                        ));
                                     } else {
                                         err_msg.push_str(&format!(
-                                            " - Additionally, column {} out of bounds (line length: {}).",
+                                            " - Additionally, column {} exceeds character count (chars: {}).",
                                             column,
-                                            line_content.len()
+                                            chars.len()
                                         ));
                                     }
                                 } else {
                                     err_msg.push_str(&format!(
-                                        " - Additionally, could not parse column number from: '{}'",
-                                        column_str
+                                        " - Additionally, column {} out of bounds (line length: {}).",
+                                        column,
+                                        line_content.len()
                                     ));
                                 }
                             } else {
-                                err_msg.push_str("- Empty column number found in error message.");
+                                err_msg.push_str(&format!(
+                                    " - Additionally, could not parse column number from: '{column_str}'"
+                                ));
                             }
                         }
 
@@ -250,7 +245,7 @@ mod tests {
             println!("Test case {}: {}", i + 1, malformed_json);
             let result: Result<serde_json::Value, _> = serde_json::from_str(malformed_json);
             if let Err(err) = result {
-                println!("  Serde JSON error: {}", err);
+                println!("  Serde JSON error: {err}");
 
                 // Test our parsing logic
                 let err_str = err.to_string();
@@ -263,7 +258,7 @@ mod tests {
 
                     if !column_str.is_empty() {
                         if let Ok(column) = column_str.parse::<usize>() {
-                            println!("  Extracted column: {}", column);
+                            println!("  Extracted column: {column}");
 
                             // Show context like our real code does
                             if column > 0 && column <= malformed_json.len() {
@@ -279,7 +274,7 @@ mod tests {
                                     let after: String =
                                         chars[char_pos + 1..end_char_pos].iter().collect();
 
-                                    println!("  Context: \"{}[{}]{}\"", before, at_pos, after);
+                                    println!("  Context: \"{before}[{at_pos}]{after}\"");
                                 }
                             }
                         }

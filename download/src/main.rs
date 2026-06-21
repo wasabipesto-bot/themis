@@ -57,7 +57,7 @@ async fn main() {
         _ => {
             // invalid, reset to 'info' as a default
             println!("Invalid log level, resetting to INFO.");
-            env::set_var("RUST_LOG", "info")
+            env::set_var("RUST_LOG", "info");
         }
     }
     env_logger::init();

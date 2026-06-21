@@ -270,7 +270,7 @@ impl PlatformHandler for Platform {
                     "{self}: {} out of {} items downloaded ({:.1}%)",
                     num_downloaded, num_to_download, percentage
                 );
-                warn!("Re-run the download program to retry the failed items.")
+                warn!("Re-run the download program to retry the failed items.");
             }
         }
     }

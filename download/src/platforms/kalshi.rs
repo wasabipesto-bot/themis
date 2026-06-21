@@ -2,7 +2,6 @@
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
-use lazy_static::lazy_static;
 use log::{debug, error, trace, warn};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
@@ -10,7 +9,7 @@ use serde_json::Value;
 use serde_jsonlines::{append_json_lines, json_lines};
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::{LazyLock, Mutex};
 use std::time::Instant;
 
 use super::{IndexItem, Platform};
@@ -23,13 +22,11 @@ const KALSHI_API_BASE: &str = "https://api.elections.kalshi.com/trade-api/v2";
 const KALSHI_RATELIMIT: usize = 10;
 const KALSHI_RATELIMIT_MS: u64 = 1000;
 
-// cache maps
-lazy_static! {
-    static ref EVENT_CACHE: Arc<Mutex<HashMap<String, Value>>> =
-        Arc::new(Mutex::new(HashMap::new()));
-    static ref SERIES_CACHE: Arc<Mutex<HashMap<String, Value>>> =
-        Arc::new(Mutex::new(HashMap::new()));
-}
+// Caches for event and series data to avoid repeated lookups.
+static EVENT_CACHE: LazyLock<Mutex<HashMap<String, Value>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static SERIES_CACHE: LazyLock<Mutex<HashMap<String, Value>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// Format of data saved to JSON
 #[derive(Debug, Clone, Serialize, Deserialize)]

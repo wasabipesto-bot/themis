@@ -220,16 +220,13 @@ pub fn calculate_all_criteria(
 
     // Iterate over all possible criterion types
     for criterion_type in CriterionType::all() {
-        match criterion_type
+        if let Ok(Some(criterion_probability)) = criterion_type
             .calc(market_id, probs)
-            .with_context(|| format!("Error calculating criterion for type {:?}", criterion_type))
+            .with_context(|| format!("Error calculating criterion for type {criterion_type:?}"))
         {
-            Ok(Some(criterion_probability)) => {
-                criteria_probabilities.push(criterion_probability);
-            }
-            _ => {
-                // In case of None or an error, continue without adding anything.
-            }
+            criteria_probabilities.push(criterion_probability);
+        } else {
+            // In case of None or an error, continue without adding anything.
         }
     }
 

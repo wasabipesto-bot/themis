@@ -455,14 +455,11 @@ fn standardize_single(
             let resolution_value = 1.0;
 
             // Get the resolution value.
-            let resolved_option = match resolution {
-                Some(res) => res,
-                None => {
-                    return Err(MarketError::DataInvalid(
-                        market_id.to_owned(),
-                        "Multiple choice question lacks resolution value".to_string(),
-                    ))
-                }
+            let Some(resolved_option) = resolution else {
+                return Err(MarketError::DataInvalid(
+                    market_id.to_owned(),
+                    "Multiple choice question lacks resolution value".to_string(),
+                ));
             };
 
             // Skip if resolution is annulled.
@@ -471,7 +468,7 @@ fn standardize_single(
             }
 
             // Append the tracked outcome to the market title so we know which side we're tracking.
-            let title = format!("{} | {}", title, resolved_option);
+            let title = format!("{title} | {resolved_option}");
 
             // Get index of resolved option for prob lookup.
             let index = options
@@ -549,15 +546,12 @@ fn format_market_description(
     resolution_criteria: &str,
     fine_print: &str,
 ) -> String {
-    format!(
-        "{}\n\n{}\n\n{}",
-        description, resolution_criteria, fine_print
-    )
+    format!("{description}\n\n{resolution_criteria}\n\n{fine_print}")
 }
 
 /// Creates a standardized market URL from a Metaculus question ID
 fn format_market_url(id: u32) -> String {
-    format!("https://www.metaculus.com/questions/{}", id)
+    format!("https://www.metaculus.com/questions/{id}")
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -684,7 +678,7 @@ fn get_category(projects: &MetaculusProjects) -> Option<String> {
         ("uk-independence-party", "politics"),
     ];
 
-    let category_map: HashMap<&str, &str> = CATEGORIES.iter().cloned().collect();
+    let category_map: HashMap<&str, &str> = CATEGORIES.iter().copied().collect();
 
     for item in &projects.category {
         if let Some(slug) = &item.slug {

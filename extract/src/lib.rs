@@ -68,23 +68,23 @@ impl std::error::Error for MarketError {}
 impl fmt::Display for MarketError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MarketError::NotAMarket(id) => write!(f, "{}: Item is not a market.", id),
-            MarketError::MarketNotResolved(id) => write!(f, "{}: Market is not resolved.", id),
+            MarketError::NotAMarket(id) => write!(f, "{id}: Item is not a market."),
+            MarketError::MarketNotResolved(id) => write!(f, "{id}: Market is not resolved."),
             MarketError::MarketCancelled(id) => {
-                write!(f, "{}: Market has been cancelled.", id)
+                write!(f, "{id}: Market has been cancelled.")
             }
-            MarketError::NoMarketTrades(id) => write!(f, "Market has no trades (ID: {}).", id),
+            MarketError::NoMarketTrades(id) => write!(f, "Market has no trades (ID: {id})."),
             MarketError::InvalidMarketTrades(id, msg) => {
-                write!(f, "{}: Error processing market trades: {}", id, msg)
+                write!(f, "{id}: Error processing market trades: {msg}")
             }
             MarketError::DataInvalid(id, msg) => {
-                write!(f, "{}: Platform data invalid: {}", id, msg)
+                write!(f, "{id}: Platform data invalid: {msg}")
             }
             MarketError::ProcessingError(id, msg) => {
-                write!(f, "{}: Error processing market data: {}", id, msg)
+                write!(f, "{id}: Error processing market data: {msg}")
             }
             MarketError::MarketTypeNotImplemented(id, market_type) => {
-                write!(f, "{}: Market type not implemented: {}", id, market_type)
+                write!(f, "{id}: Market type not implemented: {market_type}")
             }
         }
     }

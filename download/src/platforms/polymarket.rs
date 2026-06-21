@@ -40,7 +40,7 @@ pub struct PolymarketItem {
 fn get_clob_id(item: &Value) -> Result<String> {
     let tokens = item
         .get("tokens")
-        .with_context(|| format!("Market missing 'tokens' field: {:?}", item))?
+        .with_context(|| format!("Market missing 'tokens' field: {item:?}"))?
         .as_array()
         .context("Expected 'tokens' field to be an array")?;
 
@@ -52,7 +52,7 @@ fn get_clob_id(item: &Value) -> Result<String> {
 
     let token_id = first_token
         .get("token_id")
-        .with_context(|| format!("Token missing 'token_id' field: {}", first_token))?
+        .with_context(|| format!("Token missing 'token_id' field: {first_token}"))?
         .as_str()
         .context("Expected 'token_id' to be a string")?;
 
@@ -88,12 +88,12 @@ async fn get_prices_history(
                 .query(&[("fidelity", fidelity)]),
         )
         .await?;
-        prices_history = response
+        let new_history = response
             .get("history")
             .context("Expected 'history' field in market.")?
             .as_array()
-            .context("Failed to interpret 'history' as array.")?
-            .to_owned();
+            .context("Failed to interpret 'history' as array.")?;
+        prices_history.clone_from(new_history);
         if prices_history.is_empty() {
             trace!("Polymarket price history for Token ID {prices_history_token} at fidelity level {fidelity} returned no items, escalating to next fidelity level.");
         } else {
@@ -158,15 +158,15 @@ async fn get_trades(client: &ClientWithMiddleware, market: &Value) -> Result<Vec
             .to_owned();
 
         // check if we're running into repeating hashes
-        let last_hash = if !trades_arr.is_empty() {
+        let last_hash = if trades_arr.is_empty() {
+            break;
+        } else {
             trades_arr
                 .last()
                 .unwrap()
                 .get("transactionHash")
                 .unwrap()
                 .to_string()
-        } else {
-            break;
         };
         if let Some(plh) = prev_last_hash {
             if plh == last_hash {
@@ -225,7 +225,7 @@ async fn get_market_gamma(client: &ClientWithMiddleware, market: &Value) -> Resu
         .first()
         .cloned();
     if response.is_none() {
-        debug!("Polymarket {market_slug} Gamma API response was empty.")
+        debug!("Polymarket {market_slug} Gamma API response was empty.");
     }
     Ok(response)
 }
@@ -281,7 +281,7 @@ pub async fn download_index(index_file_path: &Path) -> Result<()> {
         let batch = match response.get("data") {
             Some(results) => {
                 results.as_array()
-                    .map(|results_array| results_array.to_owned())
+                    .map(std::borrow::ToOwned::to_owned)
                     .ok_or_else(|| anyhow!("{platform} API Error: 'results' is not an array at offset {:?}", cursor))
             },
             None => Err(anyhow!("{platform} API Error: No 'results' key in response from url {api_url} at offset {:?}", cursor)),

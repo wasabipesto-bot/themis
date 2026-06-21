@@ -75,7 +75,7 @@ pub fn absolute_letter_grade(score_type: &AbsoluteScoreType, score: f32) -> Stri
         }
     };
 
-    for &(cutoff, grade) in BRIER_ABSCORE_GRADES.iter() {
+    for &(cutoff, grade) in &BRIER_ABSCORE_GRADES {
         if brier_score <= cutoff {
             return grade.to_string();
         }
@@ -99,7 +99,7 @@ pub fn relative_letter_grade(score_type: &RelativeScoreType, score: f32) -> Stri
         RelativeScoreType::SphericalRelative => score * -1.0,
     };
 
-    for &(cutoff, grade) in BRIER_RELSCORE_GRADES.iter() {
+    for &(cutoff, grade) in &BRIER_RELSCORE_GRADES {
         if brier_rel_score <= cutoff {
             return grade.to_string();
         }

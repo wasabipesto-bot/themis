@@ -53,9 +53,7 @@ mod tests {
         let diff = (actual - expected).abs();
         assert!(
             diff < epsilon,
-            "Expected approximately {}, got {}",
-            expected,
-            actual
+            "Expected approximately {expected}, got {actual}"
         );
     }
 

@@ -106,7 +106,7 @@ pub async fn download_index(index_file_path: &Path) -> Result<()> {
         let batch = match response.get("results") {
             Some(results) => {
                 results.as_array()
-                    .map(|results_array| results_array.to_owned())
+                    .map(std::borrow::ToOwned::to_owned)
                     .ok_or_else(|| anyhow!("Metaculus API Error: 'results' is not an array at offset {offset}"))
             },
             None => Err(anyhow!("Metaculus API Error: No 'results' key in response from url {api_url} at offset {offset}")),

@@ -210,9 +210,9 @@ pub fn index_file_is_valid(index_file_path: &Path) -> bool {
     let mut reader = BufReader::new(file);
     let mut first_line = String::new();
     match reader.read_line(&mut first_line) {
-        Ok(0) => false, // empty file
+        // Empty file or read error: treat the index as invalid.
+        Ok(0) | Err(_) => false,
         Ok(_) => serde_json::from_str::<IndexItem>(first_line.trim()).is_ok(),
-        Err(_) => false,
     }
 }
 
@@ -326,7 +326,7 @@ pub fn get_id(item: &Value) -> Result<String> {
         .as_object()
         .context("Failed to parse JSON value as object")?
         .get("id")
-        .with_context(|| format!("Key 'id' not found in JSON object {:?}", item))?;
+        .with_context(|| format!("Key 'id' not found in JSON object {item:?}"))?;
 
     // convert to a string if necessary
     if let Some(id_str) = id_value.as_str() {
@@ -349,15 +349,15 @@ pub fn get_id(item: &Value) -> Result<String> {
 fn format_duration(duration: Duration) -> String {
     let secs = duration.as_secs();
     if secs < 60 {
-        format!("{}s", secs)
+        format!("{secs}s")
     } else if secs < 3600 {
         let minutes = secs / 60;
         let seconds = secs % 60;
-        format!("{}m {}s", minutes, seconds)
+        format!("{minutes}m {seconds}s")
     } else {
         let hours = secs / 3600;
         let minutes = (secs % 3600) / 60;
-        format!("{}h {}m", hours, minutes)
+        format!("{hours}h {minutes}m")
     }
 }
 

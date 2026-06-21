@@ -27,7 +27,9 @@ downloader runs and surfaces new issues — new breakages float to the top of St
 
 - [ ] Cargo workspace + `common` library (2024 edition) — the core of the xray
       refactor, minus the parts we don't want.
-- [ ] Set up clippy at a pedantic level
+- [x] Set up clippy at a pedantic level — each crate enables `clippy::pedantic` via
+      `[lints]` with a curated allow-list for the noisy/subjective lints; CI enforces it
+      with `-D warnings`. (Also dropped `lazy_static` in favor of `std::sync::LazyLock`.)
 - [ ] Update dependencies (both cargo and astro stuff), update docs to use nvm
 - [x] Golden-sample tests per platform — committed fixtures + `insta` snapshots run
       by `cargo test` (`extract/tests/golden.rs`); locks deserialization + standardization

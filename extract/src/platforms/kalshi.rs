@@ -446,6 +446,6 @@ fn get_category(category: &str) -> Option<String> {
         ("World", "politics"),
     ];
 
-    let category_map: HashMap<&str, &str> = CATEGORIES.iter().cloned().collect();
+    let category_map: HashMap<&str, &str> = CATEGORIES.iter().copied().collect();
     category_map.get(category).map(|&cat| cat.to_string())
 }

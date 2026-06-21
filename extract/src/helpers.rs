@@ -548,10 +548,10 @@ mod tests {
         }];
 
         let duration = get_market_duration(start, far_future).unwrap();
-        assert!(duration > 365000);
+        assert!(duration > 365_000);
 
         let daily_probs = get_daily_probabilities(&long_prob, "").unwrap();
-        assert!(daily_probs.len() > 365000);
+        assert!(daily_probs.len() > 365_000);
         assert_eq!(daily_probs.first().unwrap().prob, 0.5);
         assert_eq!(daily_probs.last().unwrap().prob, 0.5);
     }

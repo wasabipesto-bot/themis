@@ -258,7 +258,7 @@ pub fn standardize(input: &PolymarketData) -> MarketResult<Vec<MarketAndProbs>> 
 
     // Build the URL from the event slug if existing, otherwise use the market slug.
     let url = match &input.market.event_slug {
-        Some(event_slug) => format!("https://polymarket.com/event/{}", event_slug),
+        Some(event_slug) => format!("https://polymarket.com/event/{event_slug}"),
         None => format!("https://polymarket.com/event/{}", input.market.market_slug),
     };
 
@@ -356,7 +356,7 @@ fn get_category(tags: &Option<Vec<String>>) -> Option<String> {
         ("USA Election", "politics"),
     ];
 
-    let category_map: HashMap<&str, &str> = CATEGORIES.iter().cloned().collect();
+    let category_map: HashMap<&str, &str> = CATEGORIES.iter().copied().collect();
 
     tags.as_ref()?
         .iter()

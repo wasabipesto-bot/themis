@@ -29,11 +29,11 @@ fn main() -> Result<()> {
         "error" | "warn" | "info" | "debug" | "trace" => env::set_var("RUST_LOG", log_level),
         _ => {
             println!("Invalid log level, resetting to INFO.");
-            env::set_var("RUST_LOG", "info")
+            env::set_var("RUST_LOG", "info");
         }
     }
     env_logger::init();
-    debug!("Command line args: {:?}", args);
+    debug!("Command line args: {args:?}");
 
     // Get environment variables
     dotenv().ok();
