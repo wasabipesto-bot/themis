@@ -1,0 +1,31 @@
+name: Live API Check
+
+# Hits the live platform APIs, so this runs on a schedule (and on demand) rather
+# than on every push. It catches upstream API drift before it breaks a real run.
+# Requires a METACULUS_API_KEY repository secret; without it the Metaculus leg fails.
+on:
+  schedule:
+    - cron: "0 12 * * *" # daily, 12:00 UTC
+  workflow_dispatch:
+
+jobs:
+  live-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache-workspaces: |
+            download
+            extract
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Run live check
+        env:
+          METACULUS_API_KEY: ${{ secrets.METACULUS_API_KEY }}
+        run: uv run scripts/live-check.py

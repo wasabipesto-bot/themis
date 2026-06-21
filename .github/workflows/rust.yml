@@ -1,0 +1,42 @@
+name: Rust CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Each tool is its own crate (no workspace yet), so check them in a matrix.
+        crate: [download, extract, grader]
+    defaults:
+      run:
+        working-directory: ${{ matrix.crate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          cache-workspaces: ${{ matrix.crate }}
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Test
+        run: cargo test --verbose

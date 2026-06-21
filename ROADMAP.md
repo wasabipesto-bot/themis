@@ -34,7 +34,10 @@ downloader runs and surfaces new issues — new breakages float to the top of St
       against regressions. (Catching *live* API drift is the separate schema-drift item
       below — these fixtures are frozen. A `refresh-fixtures` script + scheduled run would
       bridge the two.)
-- [ ] CI runners (`rust.yml` / `astro.yml` from xray): format + build + test + clippy.
+- [x] CI runners — `rust.yml` (fmt + clippy `-D warnings` + build + test, matrixed over
+      the download/extract/grader crates), `astro.yml` (`astro check` for site + grouper),
+      and a scheduled `live-check.yml` (daily live API drift check; needs a
+      `METACULUS_API_KEY` repo secret).
 - [x] Schema-drift detection / validation pass — warn loudly when a platform's data
       stops matching expectations rather than silently dropping markets.
   - [x] `just live-check` (`scripts/live-check.py`) — samples a few live markets per
