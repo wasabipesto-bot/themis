@@ -50,7 +50,7 @@ async fn get_event(client: &ClientWithMiddleware, market: &Value) -> Result<Valu
 
     // Check cache first
     if let Some(cached_event) = EVENT_CACHE.lock().unwrap().get(event_ticker) {
-        trace!("Cache hit for event ticker: {}", event_ticker);
+        trace!("Cache hit for event ticker: {event_ticker}");
         return Ok(cached_event.clone());
     }
 
@@ -83,7 +83,7 @@ async fn get_series(client: &ClientWithMiddleware, event: &Value) -> Result<Valu
 
     // Check cache first
     if let Some(cached_series) = SERIES_CACHE.lock().unwrap().get(series_ticker) {
-        trace!("Cache hit for series ticker: {}", series_ticker);
+        trace!("Cache hit for series ticker: {series_ticker}");
         return Ok(cached_series.clone());
     }
 

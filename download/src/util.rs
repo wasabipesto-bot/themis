@@ -91,7 +91,7 @@ pub async fn send_request(req: reqwest_middleware::RequestBuilder) -> Result<Val
     let response = req
         .send()
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to send request: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to send request: {e}"))?;
 
     // parse the response as text
     let status = response.status();
@@ -103,10 +103,7 @@ pub async fn send_request(req: reqwest_middleware::RequestBuilder) -> Result<Val
     // check if the server returned an error
     if !status.is_success() {
         return Err(anyhow!(
-            "Query to {} returned {}: {}.",
-            final_url,
-            status,
-            response_text
+            "Query to {final_url} returned {status}: {response_text}."
         ));
     }
 
@@ -339,8 +336,7 @@ pub fn get_id(item: &Value) -> Result<String> {
         Ok(id_num.to_string())
     } else {
         Err(anyhow::anyhow!(
-            "Value associated with 'id' is neither a string nor a number: {:?}",
-            id_value
+            "Value associated with 'id' is neither a string nor a number: {id_value:?}"
         ))
     }
 }

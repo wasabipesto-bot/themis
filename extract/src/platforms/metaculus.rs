@@ -639,8 +639,7 @@ pub fn build_prob_segments(
         let prob = match values.get(index) {
             None => {
                 return Err(anyhow!(
-                    "Could not get index {index} in aggregation value list {:?}.",
-                    values
+                    "Could not get index {index} in aggregation value list {values:?}."
                 ))
             }
             Some(prob) => prob.to_owned(),

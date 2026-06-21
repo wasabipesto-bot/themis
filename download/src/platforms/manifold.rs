@@ -95,10 +95,7 @@ async fn get_bet_data(client: &ClientWithMiddleware, market_id: &str) -> Result<
         let bet_arr = response
             .as_array()
             .ok_or_else(|| {
-                anyhow!(
-                    "Could not format API response as array. Response: {:?}",
-                    response
-                )
+                anyhow!("Could not format API response as array. Response: {response:?}")
             })?
             .to_owned();
 
@@ -177,7 +174,7 @@ pub async fn download_index(index_file_path: &Path) -> Result<()> {
         let batch = response
             .as_array()
             .map(std::borrow::ToOwned::to_owned)
-            .ok_or_else(|| anyhow!("Could not format API reponse as array {}", response))?;
+            .ok_or_else(|| anyhow!("Could not format API reponse as array {response}"))?;
 
         // build items from batch and stream them straight to the temp file
         let mut items = Vec::with_capacity(batch.len());

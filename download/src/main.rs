@@ -61,7 +61,7 @@ async fn main() {
         }
     }
     env_logger::init();
-    debug!("Command line args: {:?}", args);
+    debug!("Command line args: {args:?}");
 
     // if the user requested a specific platform, format it into a list
     // otherwise, return the default platform list
@@ -69,7 +69,7 @@ async fn main() {
         Some(platform) => Vec::from([platform]),
         None => Platform::all(),
     };
-    debug!("Platforms to process: {:?}", platforms);
+    debug!("Platforms to process: {platforms:?}");
 
     // ensure output directory exists
     // if it doesn't exist, create it

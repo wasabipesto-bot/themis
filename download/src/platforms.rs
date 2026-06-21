@@ -246,7 +246,7 @@ impl PlatformHandler for Platform {
                         .await
                 }
             } {
-                error!("{self}: Error downloading data: {}", err);
+                error!("{self}: Error downloading data: {err}");
                 panic!();
             }
             debug!("{self}: Main download task complete.");
@@ -259,7 +259,7 @@ impl PlatformHandler for Platform {
                 .filter(|id| downloaded_ids.contains(*id))
                 .count();
             if num_downloaded == num_to_download {
-                info!("{self}: All {} items downloaded", num_to_download);
+                info!("{self}: All {num_to_download} items downloaded");
             } else {
                 let percentage = if num_to_download > 0 {
                     (num_downloaded as f64 / num_to_download as f64) * 100.0
@@ -267,8 +267,7 @@ impl PlatformHandler for Platform {
                     0.0
                 };
                 warn!(
-                    "{self}: {} out of {} items downloaded ({:.1}%)",
-                    num_downloaded, num_to_download, percentage
+                    "{self}: {num_downloaded} out of {num_to_download} items downloaded ({percentage:.1}%)"
                 );
                 warn!("Re-run the download program to retry the failed items.");
             }

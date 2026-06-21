@@ -66,7 +66,7 @@ fn main() -> Result<()> {
         }
     }
     env_logger::init();
-    debug!("Command line args: {:?}", args);
+    debug!("Command line args: {args:?}");
 
     // Get environment variables
     dotenv().ok();
@@ -90,7 +90,7 @@ fn main() -> Result<()> {
         Some(platform) => Vec::from([platform]),
         None => Platform::all(),
     };
-    debug!("Platforms to process: {:?}", platforms);
+    debug!("Platforms to process: {platforms:?}");
 
     // Initialize HTTP client
     let client = Client::builder()
@@ -104,10 +104,7 @@ fn main() -> Result<()> {
         let lines = platform.load_data(&args.directory, &args.halt_catch_fire)?;
         let num_input = lines.len();
         if args.schema_only {
-            info!(
-                "{platform}: Data loaded. All {} items deserialized correctly.",
-                num_input
-            );
+            info!("{platform}: Data loaded. All {num_input} items deserialized correctly.");
             continue;
         }
 
@@ -117,7 +114,7 @@ fn main() -> Result<()> {
         let mut num_uploaded: usize = 0;
         let mut error_counts: HashMap<String, usize> = HashMap::new();
 
-        info!("{platform}: Data loaded. Extracting {} items...", num_input);
+        info!("{platform}: Data loaded. Extracting {num_input} items...");
         let mut market_batch: Vec<MarketAndProbs> = Vec::with_capacity(BATCH_SIZE);
         for line in lines {
             let standardize_result = platform.standardize(line);
@@ -273,9 +270,7 @@ fn upload_batch(
     if !market_status.is_success() {
         let market_body = market_response.text()?;
         return Err(anyhow!(
-            "Markets batch upload failed with status {} and body: {}",
-            market_status,
-            market_body
+            "Markets batch upload failed with status {market_status} and body: {market_body}"
         ));
     }
 
@@ -299,9 +294,7 @@ fn upload_batch(
     if !probs_status.is_success() {
         let probs_body = probs_response.text()?;
         return Err(anyhow!(
-            "Daily probability batch upload failed with status {} and body: {}",
-            probs_status,
-            probs_body
+            "Daily probability batch upload failed with status {probs_status} and body: {probs_body}"
         ));
     }
 
@@ -325,9 +318,7 @@ fn upload_batch(
     if !probs_status.is_success() {
         let probs_body = probs_response.text()?;
         return Err(anyhow!(
-            "Criterion probability batch upload failed with status {} and body: {}",
-            probs_status,
-            probs_body
+            "Criterion probability batch upload failed with status {probs_status} and body: {probs_body}"
         ));
     }
 
@@ -360,9 +351,7 @@ fn refresh_materialized_views(params: &PostgrestParams) -> Result<()> {
     if !status.is_success() {
         let body = response.text()?;
         return Err(anyhow!(
-            "Refresh materialized views failed with status {} and body: {}",
-            status,
-            body
+            "Refresh materialized views failed with status {status} and body: {body}"
         ));
     }
 

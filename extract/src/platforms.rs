@@ -88,7 +88,7 @@ impl Platform {
             }
         }
 
-        anyhow::bail!("No line found containing search term: {}", search)
+        anyhow::bail!("No line found containing search term: {search}")
     }
 
     /// Find the appropriate data file based on platform name, then load and deserialize all lines.
@@ -171,7 +171,7 @@ impl Platform {
                             }
                         }
 
-                        log::error!("{}", err_msg);
+                        log::error!("{err_msg}");
                         failed_lines += 1;
                         if *fail_fast {
                             anyhow::bail!(err_msg);
@@ -185,7 +185,7 @@ impl Platform {
                         line_number + 1,
                         err
                     );
-                    log::error!("{}", err_msg);
+                    log::error!("{err_msg}");
                     anyhow::bail!(err_msg);
                 }
             }

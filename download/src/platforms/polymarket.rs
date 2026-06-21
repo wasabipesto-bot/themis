@@ -56,7 +56,7 @@ fn get_clob_id(item: &Value) -> Result<String> {
         .as_str()
         .context("Expected 'token_id' to be a string")?;
 
-    trace!("Got token ID: {}", token_id);
+    trace!("Got token ID: {token_id}");
     Ok(token_id.to_owned())
 }
 
@@ -150,10 +150,7 @@ async fn get_trades(client: &ClientWithMiddleware, market: &Value) -> Result<Vec
         let trades_arr = response
             .as_array()
             .ok_or_else(|| {
-                anyhow!(
-                    "Could not format API response as array. Response: {:?}",
-                    response
-                )
+                anyhow!("Could not format API response as array. Response: {response:?}")
             })?
             .to_owned();
 
@@ -171,17 +168,13 @@ async fn get_trades(client: &ClientWithMiddleware, market: &Value) -> Result<Vec
         if let Some(plh) = prev_last_hash {
             if plh == last_hash {
                 warn!(
-                    "Repeated hash {} at offset {} for condition ID {}. Breaking.",
-                    last_hash, offset, condition_id
+                    "Repeated hash {last_hash} at offset {offset} for condition ID {condition_id}. Breaking."
                 );
                 break;
             }
         }
         if offset > limit * 100 {
-            warn!(
-                "Downloading trades at offset {} for condition ID {}...",
-                offset, condition_id
-            );
+            warn!("Downloading trades at offset {offset} for condition ID {condition_id}...");
         }
 
         // check the length of the returned array
@@ -282,9 +275,9 @@ pub async fn download_index(index_file_path: &Path) -> Result<()> {
             Some(results) => {
                 results.as_array()
                     .map(std::borrow::ToOwned::to_owned)
-                    .ok_or_else(|| anyhow!("{platform} API Error: 'results' is not an array at offset {:?}", cursor))
+                    .ok_or_else(|| anyhow!("{platform} API Error: 'results' is not an array at offset {cursor:?}"))
             },
-            None => Err(anyhow!("{platform} API Error: No 'results' key in response from url {api_url} at offset {:?}", cursor)),
+            None => Err(anyhow!("{platform} API Error: No 'results' key in response from url {api_url} at offset {cursor:?}")),
         }?;
 
         // build items from batch and stream them straight to the temp file

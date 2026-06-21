@@ -49,10 +49,7 @@ pub fn get_prob_time_avg(
     if total_weight > 0.0 {
         Ok(weighted_sum / total_weight)
     } else {
-        error!(
-            "No prob segments found in window ({start} to {end}): {:?}",
-            probs
-        );
+        error!("No prob segments found in window ({start} to {end}): {probs:?}");
         Err(anyhow!(
             "No valid time segments found for probability calculation"
         ))
@@ -73,7 +70,7 @@ pub fn get_prob_at_time(probs: &[ProbSegment], time: DateTime<Utc>) -> Result<f3
         }
     }
 
-    error!("No probability segment found for specified time: {}", time);
+    error!("No probability segment found for specified time: {time}");
     Err(anyhow!("No probability segment found for specified time"))
 }
 
@@ -109,7 +106,7 @@ fn dt_set_hour(dt: DateTime<Utc>, hour: u32) -> Result<DateTime<Utc>> {
     let naive_dt = dt
         .date_naive()
         .and_hms_opt(hour, 0, 0)
-        .ok_or_else(|| anyhow!("Invalid hour value: {}", hour))?;
+        .ok_or_else(|| anyhow!("Invalid hour value: {hour}"))?;
 
     naive_dt
         .and_local_timezone(Utc)
