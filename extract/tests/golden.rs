@@ -18,8 +18,8 @@
 
 use std::path::PathBuf;
 
-use themis_extract::platforms::Platform;
 use themis_extract::MarketError;
+use themis_extract::platforms::Platform;
 
 fn fixtures_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures")

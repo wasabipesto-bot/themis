@@ -5,7 +5,7 @@ use chrono::TimeDelta;
 use serde::{Serialize, Serializer};
 use std::fmt::{self, Display};
 
-use crate::{helpers, ProbSegment};
+use crate::{ProbSegment, helpers};
 
 /// A probability data point used for calibration plots.
 #[derive(Debug, Serialize, Clone)]
@@ -220,13 +220,12 @@ pub fn calculate_all_criteria(
 
     // Iterate over all possible criterion types
     for criterion_type in CriterionType::all() {
+        // In case of None or an error, continue without adding anything.
         if let Ok(Some(criterion_probability)) = criterion_type
             .calc(market_id, probs)
             .with_context(|| format!("Error calculating criterion for type {criterion_type:?}"))
         {
             criteria_probabilities.push(criterion_probability);
-        } else {
-            // In case of None or an error, continue without adding anything.
         }
     }
 

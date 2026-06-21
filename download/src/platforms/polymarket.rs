@@ -1,11 +1,11 @@
 //! Tools to download and process markets from the Polymarket API.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use log::{debug, error, trace, warn};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use serde_jsonlines::{append_json_lines, json_lines};
 use std::collections::HashSet;
 use std::path::Path;
@@ -95,14 +95,21 @@ async fn get_prices_history(
             .context("Failed to interpret 'history' as array.")?;
         prices_history.clone_from(new_history);
         if prices_history.is_empty() {
-            trace!("Polymarket price history for Token ID {prices_history_token} at fidelity level {fidelity} returned no items, escalating to next fidelity level.");
+            trace!(
+                "Polymarket price history for Token ID {prices_history_token} at fidelity level {fidelity} returned no items, escalating to next fidelity level."
+            );
         } else {
-            trace!("Polymarket price history for Token ID {prices_history_token} at fidelity level {fidelity} returned {} items, saving and escaping.", prices_history.len());
+            trace!(
+                "Polymarket price history for Token ID {prices_history_token} at fidelity level {fidelity} returned {} items, saving and escaping.",
+                prices_history.len()
+            );
             break;
         }
     }
     if prices_history.is_empty() {
-        debug!("Polymarket price history for Token ID {prices_history_token} returned no items at any fidelity level.");
+        debug!(
+            "Polymarket price history for Token ID {prices_history_token} returned no items at any fidelity level."
+        );
     }
     // return history even if it has no items
     Ok((prices_history_token, prices_history))
@@ -165,13 +172,13 @@ async fn get_trades(client: &ClientWithMiddleware, market: &Value) -> Result<Vec
                 .unwrap()
                 .to_string()
         };
-        if let Some(plh) = prev_last_hash {
-            if plh == last_hash {
-                warn!(
-                    "Repeated hash {last_hash} at offset {offset} for condition ID {condition_id}. Breaking."
-                );
-                break;
-            }
+        if let Some(plh) = prev_last_hash
+            && plh == last_hash
+        {
+            warn!(
+                "Repeated hash {last_hash} at offset {offset} for condition ID {condition_id}. Breaking."
+            );
+            break;
         }
         if offset > limit * 100 {
             warn!("Downloading trades at offset {offset} for condition ID {condition_id}...");
@@ -272,12 +279,15 @@ pub async fn download_index(index_file_path: &Path) -> Result<()> {
         .await?;
 
         let batch = match response.get("data") {
-            Some(results) => {
-                results.as_array()
-                    .map(std::borrow::ToOwned::to_owned)
-                    .ok_or_else(|| anyhow!("{platform} API Error: 'results' is not an array at offset {cursor:?}"))
-            },
-            None => Err(anyhow!("{platform} API Error: No 'results' key in response from url {api_url} at offset {cursor:?}")),
+            Some(results) => results
+                .as_array()
+                .map(std::borrow::ToOwned::to_owned)
+                .ok_or_else(|| {
+                    anyhow!("{platform} API Error: 'results' is not an array at offset {cursor:?}")
+                }),
+            None => Err(anyhow!(
+                "{platform} API Error: No 'results' key in response from url {api_url} at offset {cursor:?}"
+            )),
         }?;
 
         // build items from batch and stream them straight to the temp file

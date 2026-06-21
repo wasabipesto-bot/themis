@@ -50,15 +50,19 @@ async fn main() {
     // get command line args
     let args = Args::parse();
 
-    // read log level from arg and update environment variable
-    let log_level = args.log_level.to_lowercase();
-    match log_level.as_str() {
-        "error" | "warn" | "info" | "debug" | "trace" => env::set_var("RUST_LOG", log_level),
+    // Read the log level from the CLI arg, falling back to info if it's invalid.
+    let requested = args.log_level.to_lowercase();
+    let log_level = match requested.as_str() {
+        "error" | "warn" | "info" | "debug" | "trace" => requested,
         _ => {
-            // invalid, reset to 'info' as a default
             println!("Invalid log level, resetting to INFO.");
-            env::set_var("RUST_LOG", "info");
+            "info".to_owned()
         }
+    };
+    // SAFETY: RUST_LOG is set once at startup, before any threads are spawned,
+    // so this environment mutation cannot race.
+    unsafe {
+        env::set_var("RUST_LOG", &log_level);
     }
     env_logger::init();
     debug!("Command line args: {args:?}");

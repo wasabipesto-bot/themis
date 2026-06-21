@@ -1,11 +1,11 @@
 //! Tools to download and process markets from the Manifold API.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use log::{debug, error, trace, warn};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use serde_jsonlines::{append_json_lines, json_lines};
 use std::collections::HashSet;
 use std::env;

@@ -3,13 +3,13 @@
 
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use crate::criteria::{calculate_all_criteria, CriterionProbability};
+use crate::criteria::{CriterionProbability, calculate_all_criteria};
 use crate::platforms::{MarketAndProbs, MarketResult};
-use crate::{helpers, MarketError, ProbSegment, StandardMarket};
+use crate::{MarketError, ProbSegment, StandardMarket, helpers};
 
 /// This is the container format we used to save items to disk earlier.
 #[derive(Debug, Clone, Deserialize)]
@@ -378,7 +378,7 @@ fn standardize_single(
                     return Err(MarketError::DataInvalid(
                         market_id.to_owned(),
                         "no aggregation series available".to_string(),
-                    ))
+                    ));
                 }
             };
             if probs.is_empty() {
@@ -401,16 +401,16 @@ fn standardize_single(
                 Some(MetaculusResolution::Yes) => 1.0,
                 Some(MetaculusResolution::No) => 0.0,
                 Some(MetaculusResolution::Ambiguous) => {
-                    return Err(MarketError::MarketCancelled(market_id.to_owned()))
+                    return Err(MarketError::MarketCancelled(market_id.to_owned()));
                 }
                 Some(MetaculusResolution::Annulled) => {
-                    return Err(MarketError::MarketCancelled(market_id.to_owned()))
+                    return Err(MarketError::MarketCancelled(market_id.to_owned()));
                 }
                 None => {
                     return Err(MarketError::DataInvalid(
                         market_id.to_owned(),
                         "Market is resolved but missing resolution value.".to_string(),
-                    ))
+                    ));
                 }
             };
 
@@ -493,7 +493,7 @@ fn standardize_single(
                     return Err(MarketError::DataInvalid(
                         market_id.to_owned(),
                         "no aggregation series available".to_string(),
-                    ))
+                    ));
                 }
             };
             if probs.is_empty() {
@@ -623,10 +623,10 @@ pub fn build_prob_segments(
         //   1640, 2599, 2616, 2788, 3238, 3682, 5174, 11274, 11528, 18177, 20533, 20694,
         //   20747, 20748, 20751, 20762, 20766, 20768, 20771, 20774, 20775, 20783, 20789,
         //   24020, 30251, 30297
-        if let Some(previous_segment) = segments.last() {
-            if previous_segment.end > start {
-                continue;
-            }
+        if let Some(previous_segment) = segments.last()
+            && previous_segment.end > start
+        {
+            continue;
         }
 
         // Get the aggregated probability list and check it. We'll use the first listed probability.
@@ -640,7 +640,7 @@ pub fn build_prob_segments(
             None => {
                 return Err(anyhow!(
                     "Could not get index {index} in aggregation value list {values:?}."
-                ))
+                ));
             }
             Some(prob) => prob.to_owned(),
         };
@@ -680,17 +680,17 @@ fn get_category(projects: &MetaculusProjects) -> Option<String> {
     let category_map: HashMap<&str, &str> = CATEGORIES.iter().copied().collect();
 
     for item in &projects.category {
-        if let Some(slug) = &item.slug {
-            if let Some(category_name) = category_map.get(slug.as_str()) {
-                return Some(category_name.to_string());
-            }
+        if let Some(slug) = &item.slug
+            && let Some(category_name) = category_map.get(slug.as_str())
+        {
+            return Some(category_name.to_string());
         }
     }
     for item in &projects.tag {
-        if let Some(slug) = &item.slug {
-            if let Some(category_name) = category_map.get(slug.as_str()) {
-                return Some(category_name.to_string());
-            }
+        if let Some(slug) = &item.slug
+            && let Some(category_name) = category_map.get(slug.as_str())
+        {
+            return Some(category_name.to_string());
         }
     }
     None

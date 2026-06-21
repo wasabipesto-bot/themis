@@ -6,9 +6,9 @@ use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use std::collections::HashMap;
 
-use crate::criteria::{calculate_all_criteria, CriterionProbability};
+use crate::criteria::{CriterionProbability, calculate_all_criteria};
 use crate::platforms::{MarketAndProbs, MarketResult};
-use crate::{helpers, MarketError, ProbSegment, StandardMarket};
+use crate::{MarketError, ProbSegment, StandardMarket, helpers};
 
 /// Kalshi migrated its numeric market and trade fields to stringified
 /// fixed-point (`*_fp`) and dollar (`*_dollars`) values, e.g. `"9545.44"`

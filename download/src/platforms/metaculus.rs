@@ -1,11 +1,11 @@
 //! Tools to download and process markets from the Metaculus API.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use log::{debug, trace, warn};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use serde_jsonlines::{append_json_lines, json_lines};
 use std::collections::HashSet;
 use std::env;
@@ -104,12 +104,15 @@ pub async fn download_index(index_file_path: &Path) -> Result<()> {
 
         // check the results
         let batch = match response.get("results") {
-            Some(results) => {
-                results.as_array()
-                    .map(std::borrow::ToOwned::to_owned)
-                    .ok_or_else(|| anyhow!("Metaculus API Error: 'results' is not an array at offset {offset}"))
-            },
-            None => Err(anyhow!("Metaculus API Error: No 'results' key in response from url {api_url} at offset {offset}")),
+            Some(results) => results
+                .as_array()
+                .map(std::borrow::ToOwned::to_owned)
+                .ok_or_else(|| {
+                    anyhow!("Metaculus API Error: 'results' is not an array at offset {offset}")
+                }),
+            None => Err(anyhow!(
+                "Metaculus API Error: No 'results' key in response from url {api_url} at offset {offset}"
+            )),
         }?;
 
         // break if the batch returns no items
