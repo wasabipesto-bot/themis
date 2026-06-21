@@ -1,0 +1,55 @@
+[workspace]
+resolver = "2"
+members = ["download", "extract", "grader"]
+# Archived crates that we don't build as part of the workspace.
+exclude = ["serve-archive", "client-archive"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace.dependencies]
+anyhow = "1.0"
+chrono = { version = "0.4.31", features = ["serde"] }
+clap = { version = "4.4", features = ["derive"] }
+dotenvy = "0.15.7"
+env_logger = "0.11"
+futures = "0.3.30"
+log = "0.4"
+regex = "1.10"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+reqwest-chain = "1.0.0"
+reqwest-leaky-bucket = "0.3.0"
+reqwest-middleware = "0.4.0"
+reqwest-retry = "0.7.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde-jsonlines = "0.7.0"
+tokio = { version = "1.35.0", features = ["macros"] }
+insta = { version = "1", features = ["yaml"] }
+
+# Run clippy at the pedantic level, but allow the lints that are noisy or
+# subjective enough that enforcing them isn't worth the churn for this codebase.
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+doc_markdown = "allow"
+must_use_candidate = "allow"
+float_cmp = "allow"
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+cast_lossless = "allow"
+too_many_lines = "allow"
+items_after_statements = "allow"
+implicit_hasher = "allow"
+struct_excessive_bools = "allow"
+ref_option = "allow"
+trivially_copy_pass_by_ref = "allow"
+needless_pass_by_value = "allow"
+format_push_string = "allow"
+unchecked_time_subtraction = "allow"
+implicit_clone = "allow"
+# Distinct enum variants often share a result body on purpose here.
+match_same_arms = "allow"
