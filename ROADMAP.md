@@ -30,7 +30,11 @@ downloader runs and surfaces new issues — new breakages float to the top of St
 - [x] Set up clippy at a pedantic level — each crate enables `clippy::pedantic` via
       `[lints]` with a curated allow-list for the noisy/subjective lints; CI enforces it
       with `-D warnings`. (Also dropped `lazy_static` in favor of `std::sync::LazyLock`.)
-- [ ] Update dependencies (both cargo and astro stuff), update docs to use nvm
+- [x] Update dependencies (both cargo and astro stuff), update docs to use nvm — `cargo
+      update` across crates; safe semver `npm update` for site + grouper; nvm in the README.
+      Deferred majors (need a coordinated upgrade): astro 5→6, TypeScript 5→6, the
+      tailwind/`@tailwindcss/vite` chain (vite-duplication type clash), `@astrojs/svelte` 8,
+      jsdom 29.
 - [x] Golden-sample tests per platform — committed fixtures + `insta` snapshots run
       by `cargo test` (`extract/tests/golden.rs`); locks deserialization + standardization
       against regressions. (Catching *live* API drift is the separate schema-drift item
