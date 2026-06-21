@@ -48,7 +48,7 @@ just download --help # for options
 just download # run with default settings
 ```
 
-The download utility is designed to be robust so you can set it and forget it. Errors are much more likely in later steps. If the downloader crashes and resuming a few minutes later does not solve the problem, please [submit an issue](https://github.com/wasabipesto/themis/issues/new). This could be caused by a major shift in a platform's API structure or rate limits.
+The download utility is designed to be robust so you can set it and forget it. Errors are much more likely in later steps. If the downloader crashes and resuming a few minutes later does not solve the problem, please [submit an issue](https://github.com/wasabipesto/themis/issues/new). This could be caused by a major shift in a platform's API structure or rate limits. To sanity-check that each platform's live API still downloads and extracts cleanly before committing to a long run, use `just live-check`, which samples a few markets from each platform and reports any deserialization or processing drift.
 
 Note: Do not run multiple instances of the download program to try and make it go faster! Site-specific rate limits are baked in to stay under the rate limits and prevent overloading the servers. The data downloader queues items sequentially, so you will end up with duplicate markets while also getting yourself IP-banned.
 

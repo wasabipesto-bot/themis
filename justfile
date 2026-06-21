@@ -151,6 +151,10 @@ group-test:
 embeddings *args:
     uv run scripts/update-embeddings.py {{args}}
 
+# Check that each platform's live API still downloads and extracts cleanly
+live-check *args:
+    uv run scripts/live-check.py {{args}}
+
 # Run nightly process
 nightly: download-test extract-test grade-test group-test site-test
     #just download --log-level warn --resolved-since-days-ago 10 --reset-cache
