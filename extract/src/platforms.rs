@@ -102,6 +102,7 @@ impl Platform {
         let reader = BufReader::new(file);
 
         let mut result = Vec::new();
+        let mut failed_lines = 0usize;
         for (line_number, line) in reader.lines().enumerate() {
             match line {
                 Ok(line_content) => match self.deserialize_line(&line_content) {
@@ -176,6 +177,7 @@ impl Platform {
                         }
 
                         log::error!("{}", err_msg);
+                        failed_lines += 1;
                         if *fail_fast {
                             anyhow::bail!(err_msg);
                         }
@@ -193,6 +195,29 @@ impl Platform {
                 }
             }
         }
+
+        // Schema-drift guard: a few unparseable lines happen, but if a large share of a
+        // platform's data no longer deserializes, the API schema has almost certainly
+        // changed and we should stop loudly rather than silently dropping most markets.
+        let total_lines = result.len() + failed_lines;
+        if failed_lines > 0 {
+            let failure_rate = failed_lines as f64 / total_lines as f64;
+            log::warn!(
+                "{self}: {failed_lines}/{total_lines} lines failed to deserialize ({:.1}%).",
+                failure_rate * 100.0
+            );
+            const DRIFT_MIN_LINES: usize = 20;
+            const DRIFT_RATE_THRESHOLD: f64 = 0.25;
+            if total_lines >= DRIFT_MIN_LINES && failure_rate >= DRIFT_RATE_THRESHOLD {
+                anyhow::bail!(
+                    "{self}: {:.1}% of lines failed to deserialize — the API schema has \
+                     likely changed. Halting instead of dropping most markets. Run \
+                     `just live-check` to confirm and update the relevant structs.",
+                    failure_rate * 100.0
+                );
+            }
+        }
+
         Ok(result)
     }
 

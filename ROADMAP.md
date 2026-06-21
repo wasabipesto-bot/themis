@@ -35,13 +35,14 @@ downloader runs and surfaces new issues — new breakages float to the top of St
       below — these fixtures are frozen. A `refresh-fixtures` script + scheduled run would
       bridge the two.)
 - [ ] CI runners (`rust.yml` / `astro.yml` from xray): format + build + test + clippy.
-- [~] Schema-drift detection / validation pass — warn loudly when a platform's data
+- [x] Schema-drift detection / validation pass — warn loudly when a platform's data
       stops matching expectations rather than silently dropping markets.
   - [x] `just live-check` (`scripts/live-check.py`) — samples a few live markets per
         platform, runs the real download + extract, and flags deserialization/processing
         drift. Proactive, cheap, scriptable for cron/CI.
-  - [ ] Runtime guard in extract — fail loudly when a platform's deserialization or
-        error rate exceeds a threshold during a real run.
+  - [x] Runtime guard in extract — `load_data` bails when a large share of a platform's
+        lines fail to deserialize, and the run aborts when the data/processing error rate
+        exceeds a threshold, instead of silently dropping most markets.
 
 ## Stage 3 — Future / nice-to-have
 

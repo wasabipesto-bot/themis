@@ -4,7 +4,7 @@
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use dotenvy::dotenv;
-use log::{debug, info};
+use log::{debug, error, info};
 use reqwest::blocking::Client;
 use std::collections::HashMap;
 use std::env;
@@ -97,6 +97,7 @@ fn main() -> Result<()> {
         .build()
         .context("Failed to create HTTP client")?;
 
+    let mut drift_detected = false;
     for platform in platforms {
         info!("{platform}: Loading data from disk.");
         let lines = platform.load_data(&args.directory, &args.halt_catch_fire)?;
@@ -207,6 +208,36 @@ fn main() -> Result<()> {
                 info!("  {error_type}: {count}");
             }
         }
+
+        // Schema-drift guard: the "*"-prefixed error types are genuine problems (invalid
+        // data/trades, processing failures) as opposed to expected skips. A handful is
+        // normal, but if a large share of a platform's markets hit them the upstream data
+        // has likely drifted, so flag it loudly and fail the run at the end.
+        let actual_errors: usize = error_counts
+            .iter()
+            .filter(|(error_type, _)| error_type.starts_with('*'))
+            .map(|(_, count)| *count)
+            .sum();
+        const DRIFT_MIN_ITEMS: usize = 20;
+        const DRIFT_RATE_THRESHOLD: f64 = 0.25;
+        if num_input >= DRIFT_MIN_ITEMS
+            && (actual_errors as f64 / num_input as f64) >= DRIFT_RATE_THRESHOLD
+        {
+            error!(
+                "{platform}: {actual_errors}/{num_input} markets hit data/processing errors \
+                 ({:.1}%) — the upstream data may have drifted. Run `just live-check` to \
+                 investigate.",
+                actual_errors as f64 / num_input as f64 * 100.0
+            );
+            drift_detected = true;
+        }
+    }
+
+    if drift_detected {
+        anyhow::bail!(
+            "Aborting: one or more platforms exceeded the data/processing error threshold. \
+             See the errors above."
+        );
     }
 
     // Refresh materialized views
