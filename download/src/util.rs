@@ -200,6 +200,54 @@ pub fn load_index_from_file(index_file_path: &PathBuf) -> Result<Option<Vec<Inde
     }
 }
 
+/// Returns true if the index file exists and contains at least one valid `IndexItem`.
+/// Streams only the first line so we never load the whole (potentially huge) index
+/// into memory just to decide whether it needs re-downloading.
+pub fn index_file_is_valid(index_file_path: &Path) -> bool {
+    let Ok(file) = File::open(index_file_path) else {
+        return false;
+    };
+    let mut reader = BufReader::new(file);
+    let mut first_line = String::new();
+    match reader.read_line(&mut first_line) {
+        Ok(0) => false, // empty file
+        Ok(_) => serde_json::from_str::<IndexItem>(first_line.trim()).is_ok(),
+        Err(_) => false,
+    }
+}
+
+/// Creates a temporary file path alongside the target by appending a `.tmp` extension.
+/// Used to write the index atomically: stream into the temp file, then rename into place.
+#[must_use]
+pub fn get_temp_file_path(file_path: &Path) -> PathBuf {
+    let mut temp_path = file_path.to_path_buf();
+    let current_extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
+    let new_extension = if current_extension.is_empty() {
+        "tmp".to_string()
+    } else {
+        format!("{current_extension}.tmp")
+    };
+    temp_path.set_extension(new_extension);
+    temp_path
+}
+
+/// Atomically moves a temporary file to its final location, overwriting any existing file.
+pub fn finalize_temp_file(temp_path: &Path, final_path: &Path) -> Result<()> {
+    fs::rename(temp_path, final_path).with_context(|| {
+        format!(
+            "Failed to rename temp file {} to {}",
+            temp_path.display(),
+            final_path.display()
+        )
+    })?;
+    debug!(
+        "Renamed {} to {}",
+        temp_path.display(),
+        final_path.display()
+    );
+    Ok(())
+}
+
 /// Loads each line in the data file at the specified file path.
 /// If the file does not exist, creates it.
 /// Reads and deserializes each line as JSON, then grabs the ID and saves it.

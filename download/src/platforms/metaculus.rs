@@ -1,20 +1,21 @@
 //! Tools to download and process markets from the Metaculus API.
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
 use log::{debug, trace, warn};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use serde_jsonlines::append_json_lines;
-use std::collections::HashMap;
+use serde_jsonlines::{append_json_lines, json_lines};
+use std::collections::HashSet;
 use std::env;
 use std::path::Path;
 use std::time::Instant;
 
 use super::{IndexItem, Platform};
 use crate::util::{
-    display_progress, get_id, get_reqwest_client_ratelimited_with_auth, send_request,
+    display_progress, finalize_temp_file, get_id, get_reqwest_client_ratelimited_with_auth,
+    get_temp_file_path, send_request,
 };
 
 /// Read the required Metaculus API key from the environment and format it as an
@@ -55,8 +56,8 @@ async fn get_extended_data(client: &ClientWithMiddleware, id: &str) -> Result<Va
     })
 }
 
-/// Downloads and returns a new index.
-pub async fn download_index() -> Result<Vec<IndexItem>> {
+/// Downloads a new index, streaming it directly to disk.
+pub async fn download_index(index_file_path: &Path) -> Result<()> {
     // set platform
     let platform = Platform::Metaculus;
 
@@ -68,9 +69,13 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
         Some(metaculus_auth_header()?),
     )?;
 
+    // write batches to a temp file first, then atomically move it into place
+    let temp_file_path = get_temp_file_path(index_file_path);
+    let _ = std::fs::remove_file(&temp_file_path);
+
     // loop through questions endpoint until all are downloaded
     let limit = 100;
-    let mut index = Vec::new();
+    let mut total = 0usize;
     let mut offset: usize = 0;
     loop {
         // submit the request
@@ -113,16 +118,18 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
             break;
         }
 
-        // add batch to cache
+        // build items from batch and stream them straight to the temp file
+        let mut items = Vec::with_capacity(batch.len());
         for question in batch.clone() {
             let question_id = get_id(&question)?;
-            let item = IndexItem {
-                id: question_id.clone(),
+            items.push(IndexItem {
+                id: question_id,
                 last_updated: Utc::now(),
                 data: question,
-            };
-            index.push(item);
+            });
         }
+        append_json_lines(&temp_file_path, items)?;
+        total += batch.len();
 
         // update the cursor
         if batch.len() == limit {
@@ -140,14 +147,18 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
             break;
         }
     }
-    Ok(index)
+
+    // atomically move the completed temp file into place
+    finalize_temp_file(&temp_file_path, index_file_path)?;
+    debug!("{platform}: Index download complete with {total} total items");
+    Ok(())
 }
 
 /// Downloads extended data for all markets that haven't been downloaded.
 /// Appends directly into data file.
 pub async fn download_data(
-    index: HashMap<String, IndexItem>,
-    ids_to_download: &[String],
+    index_file_path: &Path,
+    ids_to_download: &HashSet<String>,
     data_file_path: &Path,
 ) -> Result<()> {
     // get client with required API key auth
@@ -163,20 +174,24 @@ pub async fn download_data(
     let download_count = ids_to_download.len();
     let mut completed: usize = 0;
 
-    // could paralleize this but the rate limit is so low that it doesn't have any benefit
-    for id in ids_to_download.iter() {
+    // Stream the index file so we never hold the whole index in memory.
+    // We could parallelize this but the rate limit is so low it has no benefit.
+    for item in json_lines::<IndexItem, _>(index_file_path)
+        .with_context(|| format!("Failed to open index file {}", index_file_path.display()))?
+    {
+        let item = item.context("Failed to read item from index file")?;
+        if !ids_to_download.contains(&item.id) {
+            continue;
+        }
+
         // download extended data
-        let details = get_extended_data(&client, id).await?;
+        let details = get_extended_data(&client, &item.id).await?;
 
         // append row to data json file
         let line = json!(MetaculusItem {
-            id: id.clone(),
+            id: item.id.clone(),
             last_updated: Utc::now(),
-            post: index
-                .get(id)
-                .ok_or_else(|| anyhow!("Cache missing key!"))?
-                .data
-                .clone(),
+            post: item.data.clone(),
             details,
         });
         append_json_lines(data_file_path, [line])?;

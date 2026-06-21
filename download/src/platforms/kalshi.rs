@@ -1,20 +1,23 @@
 //! Tools to download and process markets from the Kalshi API.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use log::{debug, error, trace, warn};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use serde_jsonlines::append_json_lines;
-use std::collections::HashMap;
+use serde_jsonlines::{append_json_lines, json_lines};
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use super::{IndexItem, Platform};
-use crate::util::{display_progress, get_reqwest_client_ratelimited, send_request};
+use crate::util::{
+    display_progress, finalize_temp_file, get_reqwest_client_ratelimited, get_temp_file_path,
+    send_request,
+};
 
 const KALSHI_API_BASE: &str = "https://api.elections.kalshi.com/trade-api/v2";
 const KALSHI_RATELIMIT: usize = 10;
@@ -199,22 +202,18 @@ async fn get_trades(
 /// Downloads everything to build a market item.
 async fn get_data_and_build_item(
     client: &ClientWithMiddleware,
-    index: &HashMap<String, IndexItem>,
-    ticker: &str,
+    item: &IndexItem,
 ) -> Result<KalshiItem> {
-    // get market from index
-    let market = index
-        .get(ticker)
-        .ok_or_else(|| anyhow!("Index missing market key {ticker}!"))?
-        .data
-        .clone();
+    // get market from the streamed index item
+    let market = item.data.clone();
+    let ticker = item.id.as_str();
     // get event data...
     let event = get_event(client, &market).await?;
     // and series data...
     let series = get_series(client, &event).await?;
     // return the row ready for writing
     Ok(KalshiItem {
-        id: ticker.to_owned(),
+        id: item.id.clone(),
         last_updated: Utc::now(),
         market: market.clone(),
         event,
@@ -223,8 +222,8 @@ async fn get_data_and_build_item(
     })
 }
 
-/// Downloads and returns a new index.
-pub async fn download_index() -> Result<Vec<IndexItem>> {
+/// Downloads a new index, streaming it directly to disk.
+pub async fn download_index(index_file_path: &Path) -> Result<()> {
     // set platform
     let platform = Platform::Kalshi;
 
@@ -232,9 +231,13 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
     let api_url = KALSHI_API_BASE.to_owned() + "/markets";
     let client = get_reqwest_client_ratelimited(KALSHI_RATELIMIT, KALSHI_RATELIMIT_MS);
 
+    // write batches to a temp file first, then atomically move it into place
+    let temp_file_path = get_temp_file_path(index_file_path);
+    let _ = std::fs::remove_file(&temp_file_path);
+
     // loop through questions endpoint until all are downloaded
     let limit = 1000;
-    let mut index = Vec::new();
+    let mut total = 0usize;
     let mut cursor: Option<String> = None;
     loop {
         let response = send_request(
@@ -251,7 +254,8 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
             .context("Failed to interpret 'markets' as array.")?
             .to_owned();
 
-        // add batch to index
+        // build items from batch and stream them straight to the temp file
+        let mut items = Vec::with_capacity(batch.len());
         for market in batch.clone() {
             let market_ticker = market
                 .get("ticker")
@@ -259,13 +263,14 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
                 .as_str()
                 .context("Failed to interpret 'ticker' as string.")?
                 .to_owned();
-            let item = IndexItem {
-                id: market_ticker.clone(),
+            items.push(IndexItem {
+                id: market_ticker,
                 last_updated: Utc::now(),
                 data: market,
-            };
-            index.push(item);
+            });
         }
+        append_json_lines(&temp_file_path, items)?;
+        total += batch.len();
 
         // update the cursor or break
         if batch.len() == limit {
@@ -289,14 +294,18 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
             break;
         }
     }
-    Ok(index)
+
+    // atomically move the completed temp file into place
+    finalize_temp_file(&temp_file_path, index_file_path)?;
+    debug!("{platform}: Index download complete with {total} total items");
+    Ok(())
 }
 
 /// Downloads extended data for all markets that haven't been downloaded.
 /// Appends directly into data file.
 pub async fn download_data(
-    index: HashMap<String, IndexItem>,
-    ids_to_download: &[String],
+    index_file_path: &Path,
+    ids_to_download: &HashSet<String>,
     data_file_path: &Path,
 ) -> Result<()> {
     // Get client
@@ -308,34 +317,53 @@ pub async fn download_data(
     let download_count = ids_to_download.len();
     let mut completed: usize = 0;
 
-    // Process in batches of 10
-    for batch in ids_to_download.chunks(10) {
-        let futures = batch
-            .iter()
-            .map(|ticker| get_data_and_build_item(&client, &index, ticker));
-
-        // Wait for all tasks in the batch to finish
-        let results = futures::future::join_all(futures).await;
-
-        // Log any errors
-        let mut lines = Vec::new();
-        for (id, result) in batch.iter().zip(results) {
-            match result {
-                Ok(item) => {
-                    trace!("Item processed: {:?}", item.id);
-                    lines.push(item)
-                }
-                Err(e) => error!("Error downloading item {id}: {e}"),
-            }
+    // Stream the index file and process matching items in concurrent batches of 10,
+    // so we never hold the whole index in memory.
+    let mut batch: Vec<IndexItem> = Vec::with_capacity(10);
+    for item in json_lines::<IndexItem, _>(index_file_path)
+        .with_context(|| format!("Failed to open index file {}", index_file_path.display()))?
+    {
+        let item = item.context("Failed to read item from index file")?;
+        if !ids_to_download.contains(&item.id) {
+            continue;
         }
-
-        // Save batch items to disk
-        append_json_lines(data_file_path, lines)?;
-        trace!("Successfully appended {} items to file.", batch.len());
-
-        // Calculate progress and elapsed time every n items
-        completed += batch.len();
+        batch.push(item);
+        if batch.len() >= 10 {
+            completed += flush_batch(&client, &mut batch, data_file_path).await?;
+            display_progress(&platform, completed, download_count, &start_time);
+        }
+    }
+    if !batch.is_empty() {
+        completed += flush_batch(&client, &mut batch, data_file_path).await?;
         display_progress(&platform, completed, download_count, &start_time);
     }
     Ok(())
+}
+
+/// Downloads a batch of items concurrently, appends the successful ones to disk,
+/// logs any errors, clears the batch, and returns the number processed.
+async fn flush_batch(
+    client: &ClientWithMiddleware,
+    batch: &mut Vec<IndexItem>,
+    data_file_path: &Path,
+) -> Result<usize> {
+    let count = batch.len();
+    let futures = batch.iter().map(|item| get_data_and_build_item(client, item));
+    let results = futures::future::join_all(futures).await;
+
+    let mut lines = Vec::with_capacity(count);
+    for (item, result) in batch.iter().zip(results) {
+        match result {
+            Ok(built) => {
+                trace!("Item processed: {:?}", built.id);
+                lines.push(built);
+            }
+            Err(e) => error!("Error downloading item {}: {e}", item.id),
+        }
+    }
+
+    append_json_lines(data_file_path, lines)?;
+    trace!("Successfully appended {count} items to file.");
+    batch.clear();
+    Ok(count)
 }

@@ -1,20 +1,21 @@
 //! Tools to download and process markets from the Manifold API.
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
 use log::{debug, error, trace, warn};
 use reqwest_middleware::ClientWithMiddleware;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use serde_jsonlines::append_json_lines;
-use std::collections::HashMap;
+use serde_jsonlines::{append_json_lines, json_lines};
+use std::collections::HashSet;
 use std::env;
 use std::path::Path;
 use std::time::Instant;
 
 use super::{IndexItem, Platform};
 use crate::util::{
-    display_progress, get_id, get_reqwest_client_ratelimited_with_auth, send_request,
+    display_progress, finalize_temp_file, get_id, get_reqwest_client_ratelimited_with_auth,
+    get_temp_file_path, send_request,
 };
 
 /// Read the optional Manifold API key from the environment and format it as an
@@ -130,25 +131,21 @@ async fn get_bet_data(client: &ClientWithMiddleware, market_id: &str) -> Result<
 /// Downloads everything to build a market item.
 async fn get_data_and_build_item(
     client: &ClientWithMiddleware,
-    cache: &HashMap<String, IndexItem>,
-    id: &str,
+    item: &IndexItem,
 ) -> Result<ManifoldItem> {
+    let id = item.id.as_str();
     // return the row ready for writing
     Ok(ManifoldItem {
-        id: id.to_owned(),
+        id: item.id.clone(),
         last_updated: Utc::now(),
-        lite_market: cache
-            .get(id)
-            .ok_or_else(|| anyhow!("Cache missing market key {id}!"))?
-            .data
-            .clone(),
+        lite_market: item.data.clone(),
         full_market: get_full_market(client, id).await?,
         bets: get_bet_data(client, id).await?,
     })
 }
 
 /// Downloads and returns a new index.
-pub async fn download_index() -> Result<Vec<IndexItem>> {
+pub async fn download_index(index_file_path: &Path) -> Result<()> {
     // set platform
     let platform = Platform::Manifold;
 
@@ -160,9 +157,13 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
         manifold_auth_header(),
     )?;
 
+    // write batches to a temp file first, then atomically move it into place
+    let temp_file_path = get_temp_file_path(index_file_path);
+    let _ = std::fs::remove_file(&temp_file_path);
+
     // loop through questions endpoint until all are downloaded
     let limit = 1000;
-    let mut index = Vec::new();
+    let mut total = 0usize;
     let mut before: Option<String> = None;
     loop {
         let response = send_request(
@@ -178,16 +179,18 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
             .map(|response_array| response_array.to_owned())
             .ok_or_else(|| anyhow!("Could not format API reponse as array {}", response))?;
 
-        // add batch to cache
+        // build items from batch and stream them straight to the temp file
+        let mut items = Vec::with_capacity(batch.len());
         for question in batch.clone() {
             let question_id = get_id(&question)?;
-            let item = IndexItem {
-                id: question_id.clone(),
+            items.push(IndexItem {
+                id: question_id,
                 last_updated: Utc::now(),
                 data: question,
-            };
-            index.push(item);
+            });
         }
+        append_json_lines(&temp_file_path, items)?;
+        total += batch.len();
 
         // update the cursor or break
         if batch.len() == limit {
@@ -211,14 +214,18 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
             break;
         }
     }
-    Ok(index)
+
+    // atomically move the completed temp file into place
+    finalize_temp_file(&temp_file_path, index_file_path)?;
+    debug!("{platform}: Index download complete with {total} total items");
+    Ok(())
 }
 
 /// Downloads extended data for all markets that haven't been downloaded.
 /// Appends directly into data file.
 pub async fn download_data(
-    index: HashMap<String, IndexItem>,
-    ids_to_download: &[String],
+    index_file_path: &Path,
+    ids_to_download: &HashSet<String>,
     data_file_path: &Path,
 ) -> Result<()> {
     // Get client (with optional API key auth)
@@ -234,34 +241,53 @@ pub async fn download_data(
     let download_count = ids_to_download.len();
     let mut completed: usize = 0;
 
-    // Process in batches of 10
-    for batch in ids_to_download.chunks(10) {
-        let futures = batch
-            .iter()
-            .map(|id| get_data_and_build_item(&client, &index, id));
-
-        // Wait for all tasks in the batch to finish
-        let results = futures::future::join_all(futures).await;
-
-        // Log any errors
-        let mut lines = Vec::new();
-        for (id, result) in batch.iter().zip(results) {
-            match result {
-                Ok(item) => {
-                    trace!("Item processed: {:?}", item.id);
-                    lines.push(item)
-                }
-                Err(e) => error!("Error downloading item {id}: {e}"),
-            }
+    // Stream the index file and process matching items in concurrent batches of 10,
+    // so we never hold the whole index in memory.
+    let mut batch: Vec<IndexItem> = Vec::with_capacity(10);
+    for item in json_lines::<IndexItem, _>(index_file_path)
+        .with_context(|| format!("Failed to open index file {}", index_file_path.display()))?
+    {
+        let item = item.context("Failed to read item from index file")?;
+        if !ids_to_download.contains(&item.id) {
+            continue;
         }
-
-        // Save batch items to disk
-        append_json_lines(data_file_path, lines)?;
-        trace!("Successfully appended {} items to file.", batch.len());
-
-        // Calculate progress and elapsed time every n items
-        completed += batch.len();
+        batch.push(item);
+        if batch.len() >= 10 {
+            completed += flush_batch(&client, &mut batch, data_file_path).await?;
+            display_progress(&platform, completed, download_count, &start_time);
+        }
+    }
+    if !batch.is_empty() {
+        completed += flush_batch(&client, &mut batch, data_file_path).await?;
         display_progress(&platform, completed, download_count, &start_time);
     }
     Ok(())
+}
+
+/// Downloads a batch of items concurrently, appends the successful ones to disk,
+/// logs any errors, clears the batch, and returns the number processed.
+async fn flush_batch(
+    client: &ClientWithMiddleware,
+    batch: &mut Vec<IndexItem>,
+    data_file_path: &Path,
+) -> Result<usize> {
+    let count = batch.len();
+    let futures = batch.iter().map(|item| get_data_and_build_item(client, item));
+    let results = futures::future::join_all(futures).await;
+
+    let mut lines = Vec::with_capacity(count);
+    for (item, result) in batch.iter().zip(results) {
+        match result {
+            Ok(built) => {
+                trace!("Item processed: {:?}", built.id);
+                lines.push(built);
+            }
+            Err(e) => error!("Error downloading item {}: {e}", item.id),
+        }
+    }
+
+    append_json_lines(data_file_path, lines)?;
+    trace!("Successfully appended {count} items to file.");
+    batch.clear();
+    Ok(count)
 }
