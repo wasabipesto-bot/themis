@@ -11,7 +11,7 @@ use std::env;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use themis_extract::platforms::Platform;
+use themis_extract::platforms::{Platform, PlatformExt};
 use themis_extract::{MarketAndProbs, MarketError};
 
 /// Collect this many markets before uploading to database.

@@ -1,11 +1,11 @@
 //! Anything that switches based on platform.
 
 use anyhow::{Context, Result};
-use clap::ValueEnum;
-use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+
+pub use themis_common::Platform;
 
 use crate::{MarketAndProbs, MarketResult};
 
@@ -13,15 +13,6 @@ pub mod kalshi;
 pub mod manifold;
 pub mod metaculus;
 pub mod polymarket;
-
-/// Supported platforms.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, ValueEnum)]
-pub enum Platform {
-    Kalshi,
-    Manifold,
-    Metaculus,
-    Polymarket,
-}
 
 /// Deserialized JSONL line straight from the disk. One of any platform type.
 /// Boxed due to large size differences between each platform.
@@ -33,29 +24,17 @@ pub enum PlatformData {
     Polymarket(Box<polymarket::PolymarketData>),
 }
 
-impl fmt::Display for Platform {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Platform::Kalshi => write!(f, "Kalshi"),
-            Platform::Manifold => write!(f, "Manifold"),
-            Platform::Metaculus => write!(f, "Metaculus"),
-            Platform::Polymarket => write!(f, "Polymarket"),
-        }
-    }
+/// Extract-specific methods on the shared [`Platform`] enum.
+pub trait PlatformExt {
+    fn deserialize_line(&self, line: &str) -> Result<PlatformData>;
+    fn load_line_match(&self, base_dir: &Path, search: &str) -> Result<PlatformData>;
+    fn load_data(&self, base_dir: &Path, fail_fast: &bool) -> Result<Vec<PlatformData>>;
+    fn standardize(&self, input: PlatformData) -> MarketResult<Vec<MarketAndProbs>>;
 }
 
-impl Platform {
-    pub fn all() -> Vec<Platform> {
-        vec![
-            Platform::Kalshi,
-            Platform::Manifold,
-            Platform::Metaculus,
-            Platform::Polymarket,
-        ]
-    }
-
+impl PlatformExt for Platform {
     /// Based on platform, deserialize a line into that platform's datatype.
-    pub fn deserialize_line(&self, line: &str) -> Result<PlatformData> {
+    fn deserialize_line(&self, line: &str) -> Result<PlatformData> {
         match self {
             Platform::Kalshi => Ok(PlatformData::Kalshi(serde_json::from_str(line)?)),
             Platform::Manifold => Ok(PlatformData::Manifold(serde_json::from_str(line)?)),
@@ -65,7 +44,7 @@ impl Platform {
     }
 
     /// Find the first line in the platform data file matching the search term and deserialize it.
-    pub fn load_line_match(&self, base_dir: &Path, search: &str) -> Result<PlatformData> {
+    fn load_line_match(&self, base_dir: &Path, search: &str) -> Result<PlatformData> {
         let file_name = format!("{self}-data.jsonl").to_lowercase();
         let data_file_path = base_dir.join(file_name);
 
@@ -92,7 +71,7 @@ impl Platform {
     }
 
     /// Find the appropriate data file based on platform name, then load and deserialize all lines.
-    pub fn load_data(&self, base_dir: &Path, fail_fast: &bool) -> Result<Vec<PlatformData>> {
+    fn load_data(&self, base_dir: &Path, fail_fast: &bool) -> Result<Vec<PlatformData>> {
         let file_name = format!("{self}-data.jsonl").to_lowercase();
         let data_file_path = base_dir.join(file_name);
 
@@ -217,7 +196,7 @@ impl Platform {
     }
 
     /// Call each platform's standardize function.
-    pub fn standardize(&self, input_unsorted: PlatformData) -> MarketResult<Vec<MarketAndProbs>> {
+    fn standardize(&self, input_unsorted: PlatformData) -> MarketResult<Vec<MarketAndProbs>> {
         match input_unsorted {
             PlatformData::Kalshi(input) => kalshi::standardize(&input),
             PlatformData::Manifold(input) => manifold::standardize(&input),

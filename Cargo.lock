@@ -1654,6 +1654,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "themis-common"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "serde",
+]
+
+[[package]]
 name = "themis-download"
 version = "0.1.0"
 dependencies = [
@@ -1672,6 +1680,7 @@ dependencies = [
  "serde",
  "serde-jsonlines",
  "serde_json",
+ "themis-common",
  "tokio",
 ]
 
@@ -1690,6 +1699,7 @@ dependencies = [
  "serde",
  "serde-jsonlines",
  "serde_json",
+ "themis-common",
 ]
 
 [[package]]

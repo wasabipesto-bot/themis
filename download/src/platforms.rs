@@ -2,14 +2,14 @@
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
-use clap::ValueEnum;
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_jsonlines::json_lines;
 use std::collections::HashSet;
-use std::fmt;
 use std::path::Path;
+
+pub use themis_common::Platform;
 
 use crate::util::{backup_file, index_file_is_valid, load_data_ids};
 
@@ -26,34 +26,17 @@ pub struct IndexItem {
     pub data: Value,
 }
 
-/// All possible platforms that are supported by this application.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, ValueEnum, Serialize)]
-pub enum Platform {
-    Kalshi,
-    Manifold,
-    Metaculus,
-    Polymarket,
+/// Download-specific helper methods on the shared [`Platform`] enum.
+trait PlatformExt {
+    fn get_close_datetime(&self, item: &IndexItem) -> Option<DateTime<Utc>>;
+    fn get_ids_to_download(
+        &self,
+        index_file_path: &Path,
+        data_ids: &HashSet<String>,
+        resolved_since: &Option<DateTime<Utc>>,
+    ) -> Result<HashSet<String>>;
 }
-impl fmt::Display for Platform {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Platform::Kalshi => write!(f, "Kalshi"),
-            Platform::Manifold => write!(f, "Manifold"),
-            Platform::Metaculus => write!(f, "Metaculus"),
-            Platform::Polymarket => write!(f, "Polymarket"),
-        }
-    }
-}
-impl Platform {
-    /// Returns a list of all supported platform types.
-    pub fn all() -> Vec<Platform> {
-        vec![
-            Platform::Kalshi,
-            Platform::Manifold,
-            Platform::Metaculus,
-            Platform::Polymarket,
-        ]
-    }
+impl PlatformExt for Platform {
     fn get_close_datetime(&self, item: &IndexItem) -> Option<DateTime<Utc>> {
         match self {
             Platform::Kalshi => {

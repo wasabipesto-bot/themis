@@ -25,14 +25,15 @@ downloader runs and surfaces new issues — new breakages float to the top of St
 
 ## Stage 2 — Technical debt that makes development easier
 
-- [~] Cargo workspace + `common` library (2024 edition) — the core of the xray
+- [x] Cargo workspace + `common` library (2024 edition) — the core of the xray
       refactor, minus the parts we don't want.
-  - [x] Cargo workspace over download/extract/grader (shared package/deps/lints, one
-        lockfile, CI on `--workspace`).
+  - [x] Cargo workspace over common/download/extract/grader (shared package/deps/lints,
+        one lockfile, CI on `--workspace`).
   - [x] Edition 2024 across the workspace.
-  - [ ] `common` library — the shared surface turned out small: a 4-variant `Platform`
-        enum (download↔extract; grader's `Platform` is an unrelated DB struct) and the
-        PostgREST request plumbing (extract↔grader, but on DB write paths). Scope TBD.
+  - [x] `common` library — holds the shared `Platform` enum; download and extract use it
+        via extension traits. (Follow-up if wanted: move the PostgREST request plumbing
+        shared by extract+grader into `common` — deferred since it's on DB write paths
+        that can't be integration-tested without a live database.)
 - [x] Set up clippy at a pedantic level — each crate enables `clippy::pedantic` via
       `[lints]` with a curated allow-list for the noisy/subjective lints; CI enforces it
       with `-D warnings`. (Also dropped `lazy_static` in favor of `std::sync::LazyLock`.)
