@@ -1,0 +1,36 @@
+---
+source: tests/golden.rs
+expression: "summarize(Platform::Manifold)"
+---
+- id: "manifold:I2l2s22u5L"
+  title: Will Fable be reenabled for Americans before June 20?
+  platform: manifold
+  category: ~
+  resolution: 0
+  open: "2026-06-13T01:12:22.515+00:00"
+  close: "2026-06-19T23:19:30.914+00:00"
+  duration_days: 7
+  volume_usd: 1325.9875
+  traders: 727
+  daily_probs: 7
+  prob_first: 0.6027
+  prob_last: 0.062
+  prob_min: 0.062
+  prob_max: 0.6027
+  criteria: 8
+- id: "manifold:psypNUhPyU"
+  title: "NY Knicks vs SA Spurs, NBA final game 5 June 13th"
+  platform: manifold
+  category: sports
+  resolution: 1
+  open: "2026-06-09T09:44:20.147+00:00"
+  close: "2026-06-14T03:33:15.396+00:00"
+  duration_days: 6
+  volume_usd: 1194.8695
+  traders: 94
+  daily_probs: 6
+  prob_first: 0.3902
+  prob_last: 0.364
+  prob_min: 0.3554
+  prob_max: 0.3902
+  criteria: 8

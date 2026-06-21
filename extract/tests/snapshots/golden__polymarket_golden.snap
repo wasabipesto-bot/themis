@@ -1,0 +1,36 @@
+---
+source: tests/golden.rs
+expression: "summarize(Platform::Polymarket)"
+---
+- id: "polymarket:0x0e1188d1faa64914a95b0f9eebd1d11618e99e073ceed6fdf281331048b473e1"
+  title: "NCAAB: Tennessee Volunteers vs. Duke Blue Devils 2023-03-18 | Tennessee"
+  platform: polymarket
+  category: ~
+  resolution: 1
+  open: "2023-03-18T04:00:23+00:00"
+  close: "2023-05-17T04:00:41+00:00"
+  duration_days: 61
+  volume_usd: ~
+  traders: 2
+  daily_probs: 61
+  prob_first: 0.69
+  prob_last: 0.5
+  prob_min: 0.5
+  prob_max: 0.69
+  criteria: 13
+- id: "polymarket:0x2d5ddf657e4a090bc22921bf6865bcdb741a7b96ce45eb583be041756fad04a0"
+  title: "NCAAB: Arizona State Sun Devils vs. Nevada Wolf Pack 2023-03-15 | Arizona State"
+  platform: polymarket
+  category: ~
+  resolution: 1
+  open: "2023-03-15T16:00:19+00:00"
+  close: "2023-05-17T04:00:41+00:00"
+  duration_days: 64
+  volume_usd: ~
+  traders: 5
+  daily_probs: 64
+  prob_first: 0.54
+  prob_last: 0.5
+  prob_min: 0.5
+  prob_max: 0.54
+  criteria: 13

@@ -1,0 +1,58 @@
+---
+source: tests/golden.rs
+expression: "summarize(Platform::Metaculus)"
+---
+- id: "metaculus:43438:43434"
+  skipped: MarketTypeNotImplemented
+- id: "metaculus:43752"
+  title: "What will the WastewaterSCAN national wastewater category for Norovirus GII be for the week ending June 13, 2026? | Medium"
+  platform: metaculus
+  category: science
+  resolution: 1
+  open: "2026-06-02T14:09:04+00:00"
+  close: "2026-06-02T15:36:32+00:00"
+  duration_days: 1
+  volume_usd: ~
+  traders: 38
+  daily_probs: 1
+  prob_first: 0.5053
+  prob_last: 0.5053
+  prob_min: 0.5053
+  prob_max: 0.5053
+  criteria: 4
+- id: "metaculus:43786"
+  skipped: MarketTypeNotImplemented
+- id: "metaculus:43795"
+  title: "Will Swiss voters approve the \"No to a Switzerland with 10 million\" population cap referendum?"
+  platform: metaculus
+  category: politics
+  resolution: 0
+  open: "2026-06-02T16:27:44+00:00"
+  close: "2026-06-13T15:04:32+00:00"
+  duration_days: 12
+  volume_usd: ~
+  traders: 14
+  daily_probs: 12
+  prob_first: 0.3145
+  prob_last: 0.3585
+  prob_min: 0.3145
+  prob_max: 0.4
+  criteria: 10
+- id: "metaculus:43828"
+  title: "Will Swiss voters approve the \"No to a Switzerland with 10 million\" population cap referendum?"
+  platform: metaculus
+  category: politics
+  resolution: 0
+  open: "2026-06-09T12:33:04+00:00"
+  close: "2026-06-09T15:28:00+00:00"
+  duration_days: 1
+  volume_usd: ~
+  traders: 116
+  daily_probs: 1
+  prob_first: 0.2329
+  prob_last: 0.2329
+  prob_min: 0.2329
+  prob_max: 0.2329
+  criteria: 4
+- id: "metaculus:43993"
+  skipped: MarketCancelled

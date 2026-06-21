@@ -1,0 +1,36 @@
+---
+source: tests/golden.rs
+expression: "summarize(Platform::Kalshi)"
+---
+- id: "kalshi:KXMVESPORTSMULTIGAMEEXTENDED-S20266ADACC76617-DDF1F661D4A"
+  title: "yes Both Teams To Score,yes Tie,yes Spain,yes Tie,yes Uruguay,yes Argentina,yes France,yes Algeria,yes Tie,yes Tie,yes England,yes Tie,yes Portugal,yes Switzerland,yes Over 6.5 goals scored | yes Both Teams To Score,yes Tie,yes Spain,yes Tie,yes Uruguay,yes Argentina,yes France,yes Algeria,yes Tie,yes Tie,yes England,yes Tie,yes Portugal,yes Switzerland,yes Over 6.5 goals scored"
+  platform: kalshi
+  category: ~
+  resolution: 0
+  open: "2026-06-21T17:53:42.674571+00:00"
+  close: "2026-06-21T18:03:01+00:00"
+  duration_days: 1
+  volume_usd: 31009.082
+  traders: ~
+  daily_probs: 1
+  prob_first: 0.002
+  prob_last: 0.002
+  prob_min: 0.002
+  prob_max: 0.002
+  criteria: 4
+- id: "kalshi:KXMVESPORTSMULTIGAMEEXTENDED-S2026F6CD6EEDECD-02C4C350212"
+  title: "yes Target Price: $64,047.19,yes Target Price: $0.0832248,yes Target Price: $1,725.21,yes Target Price: $74.1325,yes Target Price: $1.1418 | yes Target Price: $64,047.19,yes Target Price: $0.0832248,yes Target Price: $1,725.21,yes Target Price: $74.1325,yes Target Price: $1.1418"
+  platform: kalshi
+  category: ~
+  resolution: 1
+  open: "2026-06-21T17:48:37.703227+00:00"
+  close: "2026-06-21T18:00:00+00:00"
+  duration_days: 1
+  volume_usd: 188.13
+  traders: ~
+  daily_probs: 1
+  prob_first: 0.6854
+  prob_last: 0.6854
+  prob_min: 0.6854
+  prob_max: 0.6854
+  criteria: 4

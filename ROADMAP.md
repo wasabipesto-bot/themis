@@ -29,8 +29,11 @@ downloader runs and surfaces new issues — new breakages float to the top of St
       refactor, minus the parts we don't want.
 - [ ] Set up clippy at a pedantic level
 - [ ] Update dependencies (both cargo and astro stuff), update docs to use nvm
-- [ ] Golden-sample tests per platform — committed fixtures run by `cargo test` so
-      the next API change fails CI instead of a multi-hour download.
+- [x] Golden-sample tests per platform — committed fixtures + `insta` snapshots run
+      by `cargo test` (`extract/tests/golden.rs`); locks deserialization + standardization
+      against regressions. (Catching *live* API drift is the separate schema-drift item
+      below — these fixtures are frozen. A `refresh-fixtures` script + scheduled run would
+      bridge the two.)
 - [ ] CI runners (`rust.yml` / `astro.yml` from xray): format + build + test + clippy.
 - [ ] Schema-drift detection / validation pass — warn loudly when a platform's data
       stops matching expectations rather than silently dropping markets.
