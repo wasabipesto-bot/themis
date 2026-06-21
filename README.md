@@ -21,7 +21,7 @@ Install any other dependencies:
 - For running tasks I have provided a `justfile`, which requires `just` to run. You can install that by following the instructions [here](https://just.systems/man/en/packages.html). The `justfile` is very simple, and you can just run the commands by hand if you don't want to install it.
 - The script for site deployment uses `rclone` and thus can be deployed to any target supported by that utility. You can install rclone by following the instructions [here](https://rclone.org/install/), or deploy the site some other way.
 - Some other optional utilities:
-  - There are a few Python scripts I use for development in the `scripts` folder. If you want to use these, ensure you have `python` and `uv` [installed](https://docs.astral.sh/uv/getting-started/installation/).
+  - There are a few Python scripts I use for development in the `scripts` folder. If you want to use these, ensure you have `uv` [installed](https://docs.astral.sh/uv/getting-started/installation/).
   - When testing API responses I use `jq` for filtering and general formatting. You can get that [here](https://jqlang.org/download/).
   - A couple scripts for debugging are written with `rust-script`. Installation instructions are [here](https://rust-script.org/#installation).
   - Some admin tools lean on an `ollama` API endpoint for extracting keywords, generating slugs, and more. You can find installation instructions [here](https://ollama.com/download). By default it expects that the service will be started and available on localhost.
@@ -64,7 +64,7 @@ Once the `.env` file has been created, you can go in and edit any settings you'd
 Next, we'll generate our JWT key to authenticate to PostgREST. You can do this with many services, but we'll generate it with this script:
 
 ```bash
-sed -i "s/^PGRST_APIKEY=.*/PGRST_APIKEY=$(python3 scripts/generate-db-jwt.py)/" .env
+sed -i "s/^PGRST_APIKEY=.*/PGRST_APIKEY=$(uv run scripts/generate-db-jwt.py)/" .env
 ```
 
 That key will be valid for 30 days, to refresh it just run that line again.
