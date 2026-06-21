@@ -386,7 +386,9 @@ async fn flush_batch(
     data_file_path: &Path,
 ) -> Result<usize> {
     let count = batch.len();
-    let futures = batch.iter().map(|item| get_data_and_build_item(client, item));
+    let futures = batch
+        .iter()
+        .map(|item| get_data_and_build_item(client, item));
     let results = futures::future::join_all(futures).await;
 
     let mut lines = Vec::with_capacity(count);

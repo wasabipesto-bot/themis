@@ -121,7 +121,8 @@ fn summarize(platform: Platform) -> Vec<Entry> {
                         );
                     }
 
-                    let probs: Vec<f32> = mp.daily_probabilities.iter().map(|d| r4(d.prob)).collect();
+                    let probs: Vec<f32> =
+                        mp.daily_probabilities.iter().map(|d| r4(d.prob)).collect();
                     let (prob_first, prob_last, prob_min, prob_max) = if probs.is_empty() {
                         (0.0, 0.0, 0.0, 0.0)
                     } else {
@@ -163,7 +164,7 @@ fn summarize(platform: Platform) -> Vec<Entry> {
         }
     }
 
-    entries.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
+    entries.sort_by_key(Entry::sort_key);
     entries
 }
 
