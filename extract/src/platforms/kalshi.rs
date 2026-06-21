@@ -2,12 +2,34 @@
 //! Kalshi API docs: https://trading-api.readme.io/
 
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
+use serde_json::Value;
 use std::collections::HashMap;
 
 use crate::criteria::{calculate_all_criteria, CriterionProbability};
 use crate::platforms::{MarketAndProbs, MarketResult};
 use crate::{helpers, MarketError, ProbSegment, StandardMarket};
+
+/// Kalshi migrated its numeric market and trade fields to stringified
+/// fixed-point (`*_fp`) and dollar (`*_dollars`) values, e.g. `"9545.44"`
+/// or `"0.0020"`. This parses such a field into an `f32`, tolerating either
+/// a JSON string or a plain JSON number so older cached data still loads.
+fn de_f32_flexible<'de, D>(deserializer: D) -> Result<f32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+    match Value::deserialize(deserializer)? {
+        Value::String(s) => s.parse::<f32>().map_err(Error::custom),
+        Value::Number(n) => n
+            .as_f64()
+            .map(|f| f as f32)
+            .ok_or_else(|| Error::custom("invalid number")),
+        other => Err(Error::custom(format!(
+            "expected string or number, got {other}"
+        ))),
+    }
+}
 
 /// This is the container format we used to save items to disk earlier.
 #[derive(Debug, Clone, Deserialize)]
@@ -134,8 +156,6 @@ pub struct KalshiMarket {
 
     /// The market title as displayed on the site.
     pub title: String,
-    /// The subtitle, usually the strike ("$87,000 to 87,249.99").
-    pub subtitle: String,
 
     /// A plain language description of the most important market terms.
     /// Few items with more than a single line (separated by \n).
@@ -182,22 +202,30 @@ pub struct KalshiMarket {
     /// Unsure what this refers to.
     pub latest_expiration_time: DateTime<Utc>,
 
-    /// The total value of a single contract at settlement.
+    /// The total value of a single contract at settlement, in dollars.
     /// Used as a conversion rate between contracts and dollars.
-    /// One contract is always equal to 100 cents, so this is always 100.
-    pub notional_value: f32,
-    /// The minimum price movement in the market. All limit order prices must be in denominations of the tick size.
-    /// Currently this is only ever 1 cent.
-    pub tick_size: u32,
-    /// Price for the last traded yes contract on this market.
-    pub last_price: f32,
+    /// One contract is always equal to one dollar, so this is always 1.0.
+    /// (Kalshi renamed this from `notional_value` (cents) to `notional_value_dollars`.)
+    #[serde(deserialize_with = "de_f32_flexible")]
+    pub notional_value_dollars: f32,
+    /// Price for the last traded yes contract on this market, in dollars (`[0, 1]`).
+    /// (Kalshi renamed this from `last_price` (cents).)
+    #[serde(deserialize_with = "de_f32_flexible")]
+    pub last_price_dollars: f32,
 
-    /// Value for current offers in this market in cents.
-    pub liquidity: f32,
-    /// Number of contracts bought on this market.
-    pub volume: f32,
-    /// Number of contracts bought on this market dis-considering netting.
-    pub open_interest: f32,
+    /// Value for current offers in this market, in dollars.
+    /// (Kalshi renamed this from `liquidity` (cents).)
+    #[serde(deserialize_with = "de_f32_flexible")]
+    pub liquidity_dollars: f32,
+    /// Number of contracts bought on this market (fixed-point).
+    /// With a notional value of one dollar per contract this is also the volume in dollars.
+    /// (Kalshi renamed this from `volume`.)
+    #[serde(deserialize_with = "de_f32_flexible")]
+    pub volume_fp: f32,
+    /// Number of contracts bought on this market dis-considering netting (fixed-point).
+    /// (Kalshi renamed this from `open_interest`.)
+    #[serde(deserialize_with = "de_f32_flexible")]
+    pub open_interest_fp: f32,
 }
 
 /// Values returned from the `/trades` endpoint.
@@ -210,13 +238,18 @@ pub struct KalshiHistoryItem {
     pub trade_id: String,
     /// Moment that the trade was made.
     pub created_time: DateTime<Utc>,
-    /// Number of contracts to be bought or sold.
-    pub count: u32,
-    /// Yes price for this trade in cents.
-    /// Always an integer, trades are always made at whole cents.
-    pub yes_price: f32,
-    /// Inversion of `yes_price`.
-    pub no_price: f32,
+    /// Number of contracts to be bought or sold (fixed-point).
+    /// (Kalshi renamed this from `count`.)
+    #[serde(deserialize_with = "de_f32_flexible")]
+    pub count_fp: f32,
+    /// Yes price for this trade, in dollars (`[0, 1]`).
+    /// (Kalshi renamed this from `yes_price` (cents).)
+    #[serde(deserialize_with = "de_f32_flexible")]
+    pub yes_price_dollars: f32,
+    /// Inversion of `yes_price_dollars`, in dollars.
+    /// (Kalshi renamed this from `no_price` (cents).)
+    #[serde(deserialize_with = "de_f32_flexible")]
+    pub no_price_dollars: f32,
     /// The maker is the user initiating the trade, while the taker is the
     /// opposite side. If the user was buying YES, then the taker will be on
     /// the NO side. Here, `taker_side` NO means the user bought YES shares.
@@ -264,10 +297,12 @@ pub fn standardize(input: &KalshiData) -> MarketResult<Vec<MarketAndProbs>> {
 
             // Build the recorded title from the market title and subtitle.
             // The subtitle usually includes the split or other details.
-            let title = if input.market.subtitle.is_empty() {
+            // Kalshi removed the generic `subtitle` field; `yes_sub_title` is
+            // the equivalent label for the yes side of a binary market.
+            let title = if input.market.yes_sub_title.is_empty() {
                 input.market.title.to_owned()
             } else {
-                format!("{} | {}", input.market.title, input.market.subtitle)
+                format!("{} | {}", input.market.title, input.market.yes_sub_title)
             };
 
             // Build standard market item.
@@ -285,7 +320,7 @@ pub fn standardize(input: &KalshiData) -> MarketResult<Vec<MarketAndProbs>> {
                 open_datetime: start,
                 close_datetime: end,
                 traders_count: None, // Not available in API
-                volume_usd: Some(input.market.volume),
+                volume_usd: Some(input.market.volume_fp),
                 duration_days: helpers::get_market_duration(start, end).map_err(|e| {
                     MarketError::ProcessingError(market_id.to_owned(), e.to_string())
                 })?,
@@ -340,9 +375,9 @@ pub fn build_prob_segments(
             }
         };
 
-        // The probability of the event is based on the event's yes_price.
-        // The yes price is in cents so we divide by 100 to get a value in [0, 1].
-        let prob = event.yes_price / 100.0;
+        // The probability of the event is based on the event's yes price.
+        // Kalshi now reports the yes price in dollars, already in [0, 1].
+        let prob = event.yes_price_dollars;
 
         // These were originally added to reduce the total number of segments and save a little memory.
         // I've commented them out because there were some inconsistencies with how trades were being

@@ -114,12 +114,16 @@ async fn get_trades(
     // download is getting trade history. Most don't have any trade volume
     // so to avoid sending pointless requests that will return 0 trades,
     // we skip the request if the volume is 0.
+    // Kalshi migrated to fixed-point fields, so volume is now `volume_fp`,
+    // a stringified decimal (e.g. "9545.44") rather than an integer.
     let volume = market
-        .get("volume")
-        .context("Expected 'volume' field in market.")?
-        .as_u64()
-        .context("Failed to interpret 'volume' as u64.")?;
-    if volume == 0 {
+        .get("volume_fp")
+        .context("Expected 'volume_fp' field in market.")?
+        .as_str()
+        .context("Failed to interpret 'volume_fp' as string.")?
+        .parse::<f64>()
+        .context("Failed to parse 'volume_fp' as a number.")?;
+    if volume == 0.0 {
         trace!("Kalshi volume is 0, skipping /trades request.");
         return Ok(Vec::new());
     }
