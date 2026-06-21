@@ -16,7 +16,7 @@ cd themis
 Install any other dependencies:
 
 - The downloader and extractor are written in rust. To install the rust toolchain, follow the instructions [here](https://www.rust-lang.org/tools/install). You could run these utilities in Docker but that is not officially supported.
-- The website is written with Astro, which uses `node` and `npm`. You can find the official node/npm installation instructions [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm), run everything in Docker, or use whatever version Debian stable is shipping.
+- The website is written with Astro, which uses `node` and `npm`. The easiest way to get a recent version is [`nvm`](https://github.com/nvm-sh/nvm) (`nvm install --lts`), but you can also follow the official node/npm installation instructions [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm), run everything in Docker, or use whatever version Debian stable is shipping.
 - [Docker](https://docs.docker.com/engine/install/) and the [docker compose](https://docs.docker.com/compose/install/linux) plugin are used to run the database and its connectors. It's possible to run these without docker by installing [Postgres](https://www.postgresql.org/download/) and [PostgREST](https://docs.postgrest.org/en/stable/tutorials/tut0.html) manually.
 - For running tasks I have provided a `justfile`, which requires `just` to run. You can install that by following the instructions [here](https://just.systems/man/en/packages.html). The `justfile` is very simple, and you can just run the commands by hand if you don't want to install it.
 - The script for site deployment uses `rclone` and thus can be deployed to any target supported by that utility. You can install rclone by following the instructions [here](https://rclone.org/install/), or deploy the site some other way.
@@ -30,10 +30,15 @@ Install any other dependencies:
 
 In previous versions of this program, we deserialized all API responses immediately upon receiving them in order to work in a type-safe rust environment. This works great if APIs never change. Since external APIs can change unexpectedly, we have broken the download flow into two programs: a downloader and an extractor. The downloader will grab all relevant data from the platform APIs, then the extractor will deserialize that data into something we can use.
 
+Some platforms now require an API key, so before downloading set up your `.env` file (see Step 2) and fill in the platform keys at the top:
+
+- `METACULUS_API_KEY` is **required** — Metaculus rejects unauthenticated API requests. Create a key in your Metaculus account settings.
+- `MANIFOLD_API_KEY` is optional — it raises your rate limits and is only needed for some endpoints. Leave it blank to skip it.
+
 Before downloading, make sure you have enough disk space, memory, and time:
 
-- By default the download program will download from all platforms in parallel to avoid getting bottle-necked by any one platform's API rate limit. In order to do this we first download the platform's bulk list as an index and load it into memory. If you are running in the default mode, expect to use around 6 GB of memory. If you run out of memory, you can run the platforms one at a time with the `--platform` option.
-- This program will download all relevant data from each platform's API to disk. We try to avoid reading or writing any more than necessary by buffering writes and appending data where possible. Still, a large amount of disk space will be required for this data. As of February 2025 it uses around 20 GB, but this will increase over time.
+- By default the download program will download from all platforms in parallel to avoid getting bottle-necked by any one platform's API rate limit. The platform index is streamed to disk rather than held in memory, so memory use stays modest (a few hundred MB) even for platforms with hundreds of thousands of markets. If you still want to limit concurrency, you can run the platforms one at a time with the `--platform` option.
+- This program will download all relevant data from each platform's API to disk. We try to avoid reading or writing any more than necessary by buffering writes and appending data where possible. Still, a large amount of disk space will be required for this data, and it grows steadily over time as platforms add markets (Kalshi in particular has grown quickly). As of early 2025 the full cache was around 20 GB; budget more than that.
 - When run the first time, this utility takes a day or so to complete. It will first download each platform's index and make a download plan. Then it will queue up batches of downloads that run asynchronously. If you interrupt the program or it runs into an error, simply restart it. It will look for an existing index file and attempt to resume the downloads automatically.
 
 To run the downloader:
