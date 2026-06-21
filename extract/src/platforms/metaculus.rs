@@ -75,6 +75,21 @@ pub struct MetaculusAggregationSeries {
     /// Raw aggregation.
     pub unweighted: Option<MetaculusAggregationTypes>,
 }
+impl MetaculusAggregationSeries {
+    /// Return the best available aggregation series.
+    /// Metaculus now picks a per-question `default_aggregation_method`, so the
+    /// detail endpoint may populate `unweighted` (or another method) instead of
+    /// `recency_weighted`. Prefer the recency-weighted community prediction when
+    /// present, then fall back to whichever aggregation the question provides.
+    /// This mirrors the aggregation Metaculus itself displays as the community prediction.
+    pub fn preferred(&self) -> Option<&MetaculusAggregationTypes> {
+        self.recency_weighted
+            .as_ref()
+            .or(self.unweighted.as_ref())
+            .or(self.single_aggregation.as_ref())
+            .or(self.metaculus_prediction.as_ref())
+    }
+}
 
 /// Possible question types from the Metaculus API.
 #[derive(Debug, Clone, Deserialize)]
@@ -153,6 +168,19 @@ pub enum MetaculusQuestion {
         /// Unknown.
         resolution: Option<String>,
     },
+    /// Resolves to one of a discrete set of numeric values.
+    /// Not yet fully supported; deserialized so it doesn't break processing.
+    Discrete {
+        /// Typical attributes.
+        id: u64,
+        title: String,
+        description: String,
+        resolution_criteria: String,
+        fine_print: String,
+        aggregations: MetaculusAggregationSeries,
+        /// The resolution value, if resolved.
+        resolution: Option<String>,
+    },
 }
 impl MetaculusQuestion {
     /// Get the ID from any question type
@@ -163,6 +191,7 @@ impl MetaculusQuestion {
             Self::Date { id, .. } => *id,
             Self::MultipleChoice { id, .. } => *id,
             Self::Conditional { id, .. } => *id,
+            Self::Discrete { id, .. } => *id,
         }
     }
 }
@@ -339,16 +368,16 @@ fn standardize_single(
             ..
         } => {
             // Get probability segments. If there are none then skip.
-            // Using recency_weighted (community prediction) here, may change in the future.
+            // Use the question's available community aggregation (see `preferred`).
             // Since this is binary, get the first (and only) prob in the set.
-            let probs = match &aggregations.recency_weighted {
+            let probs = match aggregations.preferred() {
                 Some(agg) => build_prob_segments(&agg.history, 0).map_err(|e| {
                     MarketError::ProcessingError(market_id.to_owned(), e.to_string())
                 })?,
                 None => {
                     return Err(MarketError::DataInvalid(
                         market_id.to_owned(),
-                        "aggregations.recency_weighted not available".to_string(),
+                        "no aggregation series available".to_string(),
                     ))
                 }
             };
@@ -457,16 +486,16 @@ fn standardize_single(
                 })?;
 
             // Get probability segments. If there are none then skip.
-            // Using recency_weighted (community prediction) here, may change in the future.
+            // Use the question's available community aggregation (see `preferred`).
             // Since this is multiple choice, we need to use the index of the resolved option.
-            let probs = match &aggregations.recency_weighted {
+            let probs = match aggregations.preferred() {
                 Some(agg) => build_prob_segments(&agg.history, index).map_err(|e| {
                     MarketError::ProcessingError(market_id.to_owned(), e.to_string())
                 })?,
                 None => {
                     return Err(MarketError::DataInvalid(
                         market_id.to_owned(),
-                        "aggregations.recency_weighted not available".to_string(),
+                        "no aggregation series available".to_string(),
                     ))
                 }
             };
@@ -506,6 +535,10 @@ fn standardize_single(
         MetaculusQuestion::Conditional { .. } => Err(MarketError::MarketTypeNotImplemented(
             market_id.to_owned(),
             "Metaculus::Conditional".to_string(),
+        )),
+        MetaculusQuestion::Discrete { .. } => Err(MarketError::MarketTypeNotImplemented(
+            market_id.to_owned(),
+            "Metaculus::Discrete".to_string(),
         )),
     }
 }
@@ -602,15 +635,18 @@ pub fn build_prob_segments(
             }
         }
 
-        // Get the means list and check it. We'll use the first listed probability.
+        // Get the aggregated probability list and check it. We'll use the first listed probability.
         // For binary markets there is only ever one per aggregation.
         // For multiple-choice there is one per option, indexed the same as the options.
-        let means = item.means.unwrap_or_default();
-        let prob = match means.get(index) {
+        // Metaculus historically reported this in `means`, but newer data leaves `means`
+        // null and instead provides the value in `centers`. Prefer `means` for backwards
+        // compatibility and fall back to `centers`.
+        let values = item.means.or(item.centers).unwrap_or_default();
+        let prob = match values.get(index) {
             None => {
                 return Err(anyhow!(
-                    "Could not get index {index} in means list {:?}.",
-                    means
+                    "Could not get index {index} in aggregation value list {:?}.",
+                    values
                 ))
             }
             Some(prob) => prob.to_owned(),
