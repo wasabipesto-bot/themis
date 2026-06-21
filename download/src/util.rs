@@ -2,6 +2,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use log::{debug, error, info, trace, warn};
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use reqwest_leaky_bucket::leaky_bucket::RateLimiter;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
@@ -21,6 +22,18 @@ pub fn get_reqwest_client_ratelimited(
     request_count: usize,
     interval_ms: u64,
 ) -> ClientWithMiddleware {
+    // this never fails without an auth header, so unwrap is safe
+    get_reqwest_client_ratelimited_with_auth(request_count, interval_ms, None)
+        .expect("Building a client with no auth header should never fail")
+}
+
+/// A rate-limited, retrying API client that optionally sends an `Authorization` header.
+/// Pass `auth_header` as the full header value, e.g. `Token abc123` or `Key abc123`.
+pub fn get_reqwest_client_ratelimited_with_auth(
+    request_count: usize,
+    interval_ms: u64,
+    auth_header: Option<String>,
+) -> Result<ClientWithMiddleware> {
     // convert to duration
     let interval_duration = std::time::Duration::from_millis(interval_ms);
 
@@ -42,10 +55,24 @@ pub fn get_reqwest_client_ratelimited(
         .interval(interval_duration)
         .build();
 
-    ClientBuilder::new(reqwest::Client::new())
+    // build the inner client, attaching the auth header as a default if provided
+    let inner = if let Some(auth_value) = auth_header {
+        let mut headers = HeaderMap::new();
+        let header_value = HeaderValue::from_str(&auth_value)
+            .context("Failed to create header value from auth string")?;
+        headers.insert(AUTHORIZATION, header_value);
+        reqwest::Client::builder()
+            .default_headers(headers)
+            .build()
+            .context("Failed to build reqwest client with headers")?
+    } else {
+        reqwest::Client::new()
+    };
+
+    Ok(ClientBuilder::new(inner)
         .with(RetryTransientMiddleware::new_with_policy(retry_policy))
         .with(reqwest_leaky_bucket::rate_limit_all(rate_limiter))
-        .build()
+        .build())
 }
 
 /// Standard method for sending a request and returning the output as a JSON value.

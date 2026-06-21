@@ -8,11 +8,25 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use serde_jsonlines::append_json_lines;
 use std::collections::HashMap;
+use std::env;
 use std::path::Path;
 use std::time::Instant;
 
 use super::{IndexItem, Platform};
-use crate::util::{display_progress, get_id, get_reqwest_client_ratelimited, send_request};
+use crate::util::{
+    display_progress, get_id, get_reqwest_client_ratelimited_with_auth, send_request,
+};
+
+/// Read the required Metaculus API key from the environment and format it as an
+/// `Authorization` header value. Metaculus now requires authentication for the API.
+fn metaculus_auth_header() -> Result<String> {
+    let api_key = env::var("METACULUS_API_KEY")
+        .map_err(|_| anyhow!("METACULUS_API_KEY environment variable is required"))?;
+    if api_key.is_empty() {
+        return Err(anyhow!("METACULUS_API_KEY environment variable is empty"));
+    }
+    Ok(format!("Token {api_key}"))
+}
 
 const METACULUS_API_BASE: &str = "https://www.metaculus.com/api";
 const METACULUS_RATELIMIT: usize = 8;
@@ -46,9 +60,13 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
     // set platform
     let platform = Platform::Metaculus;
 
-    // get client
+    // get client with required API key auth
     let api_url = METACULUS_API_BASE.to_owned() + "/posts/";
-    let client = get_reqwest_client_ratelimited(METACULUS_RATELIMIT, METACULUS_RATELIMIT_MS);
+    let client = get_reqwest_client_ratelimited_with_auth(
+        METACULUS_RATELIMIT,
+        METACULUS_RATELIMIT_MS,
+        Some(metaculus_auth_header()?),
+    )?;
 
     // loop through questions endpoint until all are downloaded
     let limit = 100;
@@ -132,9 +150,13 @@ pub async fn download_data(
     ids_to_download: &[String],
     data_file_path: &Path,
 ) -> Result<()> {
-    // get client
+    // get client with required API key auth
     let platform = Platform::Metaculus;
-    let client = get_reqwest_client_ratelimited(METACULUS_RATELIMIT, METACULUS_RATELIMIT_MS);
+    let client = get_reqwest_client_ratelimited_with_auth(
+        METACULUS_RATELIMIT,
+        METACULUS_RATELIMIT_MS,
+        Some(metaculus_auth_header()?),
+    )?;
 
     // Set progress counters
     let start_time = Instant::now();

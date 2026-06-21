@@ -8,11 +8,24 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use serde_jsonlines::append_json_lines;
 use std::collections::HashMap;
+use std::env;
 use std::path::Path;
 use std::time::Instant;
 
 use super::{IndexItem, Platform};
-use crate::util::{display_progress, get_id, get_reqwest_client_ratelimited, send_request};
+use crate::util::{
+    display_progress, get_id, get_reqwest_client_ratelimited_with_auth, send_request,
+};
+
+/// Read the optional Manifold API key from the environment and format it as an
+/// `Authorization` header value. Returns `None` if unset or blank; Manifold auth
+/// is optional but raises rate limits and is needed for some endpoints.
+fn manifold_auth_header() -> Option<String> {
+    env::var("MANIFOLD_API_KEY")
+        .ok()
+        .filter(|key| !key.is_empty())
+        .map(|key| format!("Key {key}"))
+}
 
 const MANIFOLD_API_BASE: &str = "https://api.manifold.markets/v0";
 const MANIFOLD_RATELIMIT: usize = 15;
@@ -139,9 +152,13 @@ pub async fn download_index() -> Result<Vec<IndexItem>> {
     // set platform
     let platform = Platform::Manifold;
 
-    // get url and client
+    // get url and client (with optional API key auth)
     let api_url = MANIFOLD_API_BASE.to_owned() + "/markets";
-    let client = get_reqwest_client_ratelimited(MANIFOLD_RATELIMIT, MANIFOLD_RATELIMIT_MS);
+    let client = get_reqwest_client_ratelimited_with_auth(
+        MANIFOLD_RATELIMIT,
+        MANIFOLD_RATELIMIT_MS,
+        manifold_auth_header(),
+    )?;
 
     // loop through questions endpoint until all are downloaded
     let limit = 1000;
@@ -204,9 +221,13 @@ pub async fn download_data(
     ids_to_download: &[String],
     data_file_path: &Path,
 ) -> Result<()> {
-    // Get client
+    // Get client (with optional API key auth)
     let platform = Platform::Manifold;
-    let client = get_reqwest_client_ratelimited(MANIFOLD_RATELIMIT, MANIFOLD_RATELIMIT_MS);
+    let client = get_reqwest_client_ratelimited_with_auth(
+        MANIFOLD_RATELIMIT,
+        MANIFOLD_RATELIMIT_MS,
+        manifold_auth_header(),
+    )?;
 
     // Set progress counters
     let start_time = Instant::now();
