@@ -18,6 +18,9 @@ use themis_extract::{MarketAndProbs, MarketError};
 /// Not a firm limit, can be exceeded if the last line has multiple markets.
 const BATCH_SIZE: usize = 1000;
 
+/// Log a progress line every this many items read from a platform's data file.
+const PROGRESS_INTERVAL: usize = 100_000;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about)]
 struct Args {
@@ -105,23 +108,27 @@ fn main() -> Result<()> {
 
     let mut drift_detected = false;
     for platform in platforms {
-        info!("{platform}: Loading data from disk.");
-        let lines = platform.load_data(&args.directory, &args.halt_catch_fire)?;
-        let num_input = lines.len();
-        if args.schema_only {
-            info!("{platform}: Data loaded. All {num_input} items deserialized correctly.");
-            continue;
-        }
+        info!("{platform}: Streaming data from disk.");
+        let stream = platform.stream_data(&args.directory, args.halt_catch_fire)?;
 
+        let mut num_input: usize = 0;
         let mut num_skipped: usize = 0;
         let mut num_processed: usize = 0;
         let mut num_multiple: usize = 0;
         let mut num_uploaded: usize = 0;
         let mut error_counts: HashMap<String, usize> = HashMap::new();
 
-        info!("{platform}: Data loaded. Extracting {num_input} items...");
         let mut market_batch: Vec<MarketAndProbs> = Vec::with_capacity(BATCH_SIZE);
-        for line in lines {
+        for item in stream {
+            let line = item?;
+            num_input += 1;
+            if num_input.is_multiple_of(PROGRESS_INTERVAL) {
+                info!("{platform}: {num_input} items read...");
+            }
+            if args.schema_only {
+                continue;
+            }
+
             let standardize_result = platform.standardize(line);
             let standardized_markets = match standardize_result {
                 Ok(items) => items,
@@ -189,6 +196,11 @@ fn main() -> Result<()> {
                 }
             }
         }
+        if args.schema_only {
+            info!("{platform}: Schema check complete, {num_input} items deserialized.");
+            continue;
+        }
+
         // Upload any remaining items in the final batch
         if !market_batch.is_empty() && !args.offline {
             upload_batch(&client, &postgrest_params, &market_batch)?;
