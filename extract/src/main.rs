@@ -75,7 +75,7 @@ fn main() -> Result<()> {
 
     // Get environment variables
     dotenv().ok();
-    let postgrest_params = if args.offline {
+    let postgrest_params = if args.offline || args.schema_only {
         PostgrestParams {
             postgrest_url: env::var("PGRST_URL").unwrap_or_default(),
             postgrest_api_key: env::var("PGRST_APIKEY").unwrap_or_default(),
@@ -243,8 +243,8 @@ fn main() -> Result<()> {
         );
     }
 
-    // Refresh materialized views
-    if !args.offline {
+    // Refresh materialized views (neither offline nor schema-only runs touch the database)
+    if !args.offline && !args.schema_only {
         refresh_materialized_views(&postgrest_params)?;
     }
 
