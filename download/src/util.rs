@@ -284,7 +284,7 @@ pub fn load_data_ids(data_file_path: &PathBuf) -> Result<HashSet<String>> {
                         }
                         Err(e) => {
                             // valid JSON but no ID
-                            error!("Failed to get ID from JSON {value}: {e}",);
+                            error!("Failed to get ID from JSON {value}: {e}");
                             return Err(anyhow!("Failed to get ID from JSON {value}: {e}"));
                         }
                     }

@@ -107,7 +107,7 @@ pub fn score_market(
             }
 
             // Sort probabilities by date
-            daily_probs.sort_by(|a, b| a.date.cmp(&b.date));
+            daily_probs.sort_by_key(|a| a.date);
 
             Ok(MarketWithProbs {
                 market: market.clone(),

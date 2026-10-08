@@ -165,7 +165,7 @@ fn main() -> Result<()> {
                     }
 
                     // Return empty vector for all error cases
-                    Vec::with_capacity(0)
+                    Vec::new()
                 }
             };
             match standardized_markets.len() {
@@ -337,7 +337,7 @@ fn refresh_materialized_views(params: &PostgrestParams) -> Result<()> {
     info!("Refreshing all materialized views (this may take a while)");
 
     // Create a new client with a longer timeout specifically for this operation
-    let timeout = Duration::from_secs(6000);
+    let timeout = Duration::from_mins(100);
     let long_timeout_client = Client::builder()
         .timeout(timeout)
         .build()

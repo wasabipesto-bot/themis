@@ -462,7 +462,7 @@ pub fn standardize(input: &ManifoldData) -> MarketResult<Vec<MarketAndProbs>> {
                 let mut result = Vec::new();
                 for answer in answers {
                     // Override market ID. Construct from platform slug, market ID within platform, and answer ID within market.
-                    let market_id = format!("{}:{}:{}", &platform_slug, market.id, answer.id);
+                    let market_id = format!("{}:{}:{}", platform_slug, market.id, answer.id);
 
                     // Determine the resolution
                     let resolution = match get_resolution_value_binary(
@@ -648,12 +648,12 @@ fn get_resolution_value_binary(
                     //  - MWzNRuVifNR8NB9WVoeC
                     //  - V288UeQ98h4j3KPbceiJ
                     //  - ooiNbYz6Adqcv7eUfLPa
-                    Err(anyhow!("Resolution is MKT but probability is missing.",))
+                    Err(anyhow!("Resolution is MKT but probability is missing."))
                 }
                 Some(res_prob) => Ok(Some(res_prob.to_owned())),
             },
             "CANCEL" => Ok(None),
-            _ => Err(anyhow!("Resolution value is not one of YES/NO/MKT/CANCEL",)),
+            _ => Err(anyhow!("Resolution value is not one of YES/NO/MKT/CANCEL")),
         },
         None => {
             if fail_on_missing {

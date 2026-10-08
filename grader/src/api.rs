@@ -274,7 +274,7 @@ pub fn refresh_quick_materialized_views(client: &Client, params: &PostgrestParam
 /// Should be called after all data has been uploaded to ensure views are up-to-date.
 pub fn refresh_all_materialized_views(params: &PostgrestParams) -> Result<()> {
     // Create a new client with a longer timeout specifically for this operation
-    let timeout = Duration::from_secs(6000);
+    let timeout = Duration::from_mins(100);
     let client = Client::builder()
         .timeout(timeout)
         .build()
