@@ -19,9 +19,34 @@ downloader runs and surfaces new issues — new breakages float to the top of St
       xray approach, which re-scanned the index per market (O(n²)); this is O(n).
 - [ ] Run the full pipeline end-to-end against the DB:
       download → extract → group new markets → grade → site-build → deploy.
+  - [x] Offline extract over the July 2026 test download, all four platforms (2026-10-08).
+  - [ ] Load it into a DB restored from the 2026-06-29 backup (without embeddings), grade,
+        and build the site locally.
 - [ ] Docs for the new reality — note the Metaculus key requirement and Kalshi
       schema change in the README (template.env already updated).
-- [ ] Triage whatever the running downloader turns up (placeholder).
+- [ ] Triage from the July 2026 test download:
+  - [ ] **Kalshi historical split.** `/markets` and `/markets/trades` now only cover markets
+        settled after a rolling cutoff (`/historical/cutoff`, 2026-08-09 as of 2026-10-08); older
+        markets moved to `/historical/markets`. The downloader only reads `/markets`, so the July
+        data has nothing settled before May 2026 and markets settled between the last DB refresh
+        (Nov 2025) and then are in neither. Download from both and deduplicate.
+  - [ ] **Kalshi parlays** (`KXMVE*`): about 93% of the July data and 97% of its usable markets
+        (~12.4M of 12.7M, averaging 2.5 trades each); 338k are already in the DB. Exclude them at
+        index time and remove them from the DB. While there: skip zero-volume markets before
+        fetching, and cache event/series lookups (two requests per market today).
+  - [ ] **Polymarket index stops after one page.** The loop ends when `batch.len() != limit`, but
+        the CLOB API now returns 1000 per page whatever `limit` says (we send 500). Paginate until
+        `next_cursor == "LTE="`. The January data is also only 14% of its index (51k of 377k).
+  - [ ] Kalshi `result: "scalar"` doesn't deserialize (82,589 lines, 0.3%). Decide whether to
+        skip them as not implemented or resolve from the settlement value.
+  - [ ] Small ones: Kalshi lines missing `title` (5); Metaculus `details: null` (2), a null f32
+        (1) and trade-gap processing errors (10); Polymarket null trade entries (4) and token
+        price sums (3); Manifold "resolution is MKT but probability is missing" (4).
+  - [x] Extract streams data files instead of loading them whole. Peak memory was ~0.75x the
+        file size; now it's set by the largest single line (2.7 GB for one Manifold market,
+        under 700 MB elsewhere).
+  - [x] `extract --schema-only` no longer needs or touches the database.
+  - [x] Clippy lints new in Rust 1.98.
 
 ## Stage 2 — Technical debt that makes development easier
 
